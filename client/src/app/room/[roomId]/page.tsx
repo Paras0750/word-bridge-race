@@ -24,15 +24,42 @@ import { PickPhase } from "@/components/PickPhase";
 
 const NAME_KEY = "wbr.name";
 
-export interface AttemptEntry {
-  id: string;
-  playerId: string;
-  name: string;
-  word: string;
-  valid: boolean;
-  reason?: string;
-  at: number;
-}
+export type AttemptEntry =
+  | {
+      id: string;
+      kind: "guess";
+      playerId: string;
+      name: string;
+      word: string;
+      valid: boolean;
+      reason?: string;
+      at: number;
+    }
+  | {
+      id: string;
+      kind: "cheat";
+      playerId: string;
+      name: string;
+      penalty: number;
+      at: number;
+    }
+  | {
+      id: string;
+      kind: "peek";
+      playerId: string;
+      name: string;
+      message: string;
+      at: number;
+    }
+  | {
+      id: string;
+      kind: "skip";
+      playerId: string;
+      name: string;
+      votes: number;
+      total: number;
+      at: number;
+    };
 
 export default function RoomPage() {
   const params = useParams<{ roomId: string }>();
@@ -97,6 +124,7 @@ export default function RoomPage() {
         ...prev,
         {
           id,
+          kind: "guess",
           playerId: data.playerId,
           name: data.name,
           word: data.word,
@@ -112,6 +140,7 @@ export default function RoomPage() {
         ...prev,
         {
           id,
+          kind: "guess",
           playerId: w.playerId,
           name: w.name,
           word: w.word,
@@ -142,7 +171,6 @@ export default function RoomPage() {
     const onCheaterCaught = (data: {
       playerId: string;
       name: string;
-      word: string;
       penalty: number;
     }): void => {
       const id = `${Date.now()}-${Math.random()}`;
@@ -150,26 +178,57 @@ export default function RoomPage() {
         ...prev,
         {
           id,
+          kind: "cheat",
           playerId: data.playerId,
           name: data.name,
-          word: data.word,
-          valid: false,
-          reason: "pasted",
+          penalty: data.penalty,
           at: Date.now(),
         },
       ]);
       if (data.playerId === meIdRef.current) {
         toast.error(`🚨 Caught pasting! −${data.penalty} pts`);
       } else {
-        toast.error(`🚨 ${data.name} pasted "${data.word}" · −${data.penalty} pts`);
+        toast.error(`🚨 ${data.name} got caught pasting · −${data.penalty} pts`);
       }
     };
     const onPeekAnnounce = (data: {
       playerId: string;
+      name: string;
       message: string;
     }): void => {
-      if (data.playerId === meIdRef.current) return;
-      toast(data.message);
+      const id = `${Date.now()}-${Math.random()}`;
+      setAttempts((prev) => [
+        ...prev,
+        {
+          id,
+          kind: "peek",
+          playerId: data.playerId,
+          name: data.name,
+          message: data.message,
+          at: Date.now(),
+        },
+      ]);
+      if (data.playerId !== meIdRef.current) toast(data.message);
+    };
+    const onSkipVote = (data: {
+      playerId: string;
+      name: string;
+      votes: number;
+      total: number;
+    }): void => {
+      const id = `${Date.now()}-${Math.random()}`;
+      setAttempts((prev) => [
+        ...prev,
+        {
+          id,
+          kind: "skip",
+          playerId: data.playerId,
+          name: data.name,
+          votes: data.votes,
+          total: data.total,
+          at: Date.now(),
+        },
+      ]);
     };
     const onError = (msg: string): void => {
       toast.error(msg);
@@ -183,6 +242,7 @@ export default function RoomPage() {
     socket.on("round_skipped", onRoundSkipped);
     socket.on("cheater_caught", onCheaterCaught);
     socket.on("peek_announce", onPeekAnnounce);
+    socket.on("skip_vote", onSkipVote);
     socket.on("error_msg", onError);
 
     const tryJoin = (): void => {
@@ -215,6 +275,7 @@ export default function RoomPage() {
       socket.off("round_skipped", onRoundSkipped);
       socket.off("cheater_caught", onCheaterCaught);
       socket.off("peek_announce", onPeekAnnounce);
+      socket.off("skip_vote", onSkipVote);
       socket.off("error_msg", onError);
       socket.off("connect", onConnect);
     };

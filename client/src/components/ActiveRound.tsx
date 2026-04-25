@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Loader2Icon, SendIcon } from "lucide-react";
+import { HandIcon, Loader2Icon, SendIcon } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -263,6 +263,8 @@ export function ActiveRound({ room, meId, attempts }: Props) {
               ends with <span className="text-foreground font-mono uppercase">{end}</span>{" "}
               · not used in this room before.
             </p>
+
+            <SkipVoteRow room={room} meId={meId} />
           </CardContent>
         </Card>
 
@@ -300,6 +302,49 @@ export function ActiveRound({ room, meId, attempts }: Props) {
       </div>
 
       <AttemptsLog attempts={attempts} meId={meId} emptyHint="Be the first to guess!" />
+    </div>
+  );
+}
+
+function SkipVoteRow({ room, meId }: { room: PublicRoom; meId: string }) {
+  const [voting, setVoting] = useState<boolean>(false);
+  const votes = room.round?.skipVoteIds ?? [];
+  const total = room.players.length;
+  const haveIVoted = votes.includes(meId);
+
+  const vote = (): void => {
+    if (haveIVoted || voting) return;
+    setVoting(true);
+    getSocket().emit("vote_skip", { roomId: room.id }, () => {
+      setVoting(false);
+    });
+  };
+
+  return (
+    <div className="mt-4 flex items-center justify-between gap-2 border-t pt-3">
+      <div className="text-muted-foreground text-[11px]">
+        Stuck? Skip if everyone agrees ·{" "}
+        <span className="font-mono tabular-nums">
+          {votes.length}/{total}
+        </span>
+      </div>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={vote}
+        disabled={haveIVoted || voting}
+        className={cn(
+          "h-8 gap-1.5",
+          haveIVoted && "border-[var(--warning)]/40 text-[var(--warning)]",
+        )}
+      >
+        {voting ? (
+          <Loader2Icon className="size-3 animate-spin" />
+        ) : (
+          <HandIcon className="size-3" />
+        )}
+        {haveIVoted ? "Voted skip" : "Vote skip"}
+      </Button>
     </div>
   );
 }

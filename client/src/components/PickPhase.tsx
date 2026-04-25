@@ -66,7 +66,7 @@ export function PickPhase({ room, meId }: Props) {
             )}
           </CardTitle>
 
-          {slot === "end" && (
+          {slot === "end" && isMyTurn && (
             <p className="text-muted-foreground mt-2 text-xs">
               Start letter is hidden — pick blind.
             </p>

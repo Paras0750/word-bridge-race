@@ -91,7 +91,9 @@ export function toPublicRoom(room: Room): PublicRoom {
         winner: room.round.winner,
         timedOut: room.round.timedOut,
         skipped: room.round.skipped,
+        skipReason: room.round.skipReason,
         possibleWordCount: room.round.possibleWordCount,
+        skipVoteIds: [...room.round.skipVotes],
       }
     : null;
 

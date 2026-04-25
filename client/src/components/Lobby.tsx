@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { getSocket } from "@/lib/socket";
 import type { PublicRoom } from "@/lib/types";
 import { SettingsPanel } from "./SettingsPanel";
+import { HouseRules } from "./HouseRules";
 
 interface Props {
   room: PublicRoom;
@@ -232,7 +233,10 @@ export function Lobby({ room, meId, isHost }: Props) {
         </Card>
       </div>
 
-      <SettingsPanel room={room} isHost={isHost} />
+      <div className="flex flex-col gap-4">
+        <SettingsPanel room={room} isHost={isHost} />
+        <HouseRules />
+      </div>
     </div>
   );
 }

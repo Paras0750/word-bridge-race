@@ -160,8 +160,10 @@ function beginPickPhase(room: Room): void {
     winner: null,
     timedOut: false,
     skipped: false,
+    skipReason: null,
     possibleWordCount: 0,
     cheaters: new Set<string>(),
+    skipVotes: new Set<string>(),
   };
 
   schedulePickTimeout(room, "start");
@@ -214,6 +216,7 @@ function applyPick(
 
   if (possible === 0) {
     room.round.skipped = true;
+    room.round.skipReason = "no_words";
     io.to(room.id).emit("round_skipped", {
       roundIndex: room.round.index,
       start: room.round.start,
@@ -537,7 +540,6 @@ io.on("connection", (socket: IOSocket) => {
       io.to(room.id).emit("cheater_caught", {
         playerId: player.id,
         name: player.name,
-        word: rawWord,
         penalty: taken,
         scoreAfter: player.score,
       });
@@ -618,6 +620,42 @@ io.on("connection", (socket: IOSocket) => {
       kind,
     });
     ack({ ok: true, data: null });
+  });
+
+  socket.on("vote_skip", (payload, ack) => {
+    const room = rooms.get(payload.roomId);
+    if (!room) return ack({ ok: false, error: "Room not found" });
+    const player = findPlayer(room, socket.data.playerId);
+    if (!player) return ack({ ok: false, error: "Not in this room" });
+    if (room.phase !== "active" || !room.round)
+      return ack({ ok: false, error: "Round is not active" });
+    if (room.round.winner)
+      return ack({ ok: false, error: "Round already won" });
+
+    room.round.skipVotes.add(player.id);
+    const total = room.players.length;
+    const votes = room.round.skipVotes.size;
+
+    io.to(room.id).emit("skip_vote", {
+      playerId: player.id,
+      name: player.name,
+      votes,
+      total,
+    });
+    broadcastRoom(room);
+    ack({ ok: true, data: { votes, total } });
+
+    if (votes >= total && total >= 1) {
+      room.round.skipped = true;
+      room.round.skipReason = "voted";
+      io.to(room.id).emit("round_skipped", {
+        roundIndex: room.round.index,
+        start: room.round.start,
+        end: room.round.end,
+        reason: "voted",
+      });
+      finishRound(room);
+    }
   });
 
   socket.on("end_game", (payload, ack) => {

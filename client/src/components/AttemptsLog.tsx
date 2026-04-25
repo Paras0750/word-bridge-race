@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { CheckCircle2Icon, XCircleIcon } from "lucide-react";
+import {
+  CheckCircle2Icon,
+  ClipboardXIcon,
+  EyeIcon,
+  HandIcon,
+  XCircleIcon,
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -28,7 +34,7 @@ export function AttemptsLog({ attempts, meId, className, emptyHint }: Props) {
       <CardHeader>
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="text-sm font-medium">Round log</CardTitle>
-          <Badge variant="secondary" className="font-mono rounded text-[10px] tabular-nums">
+          <Badge variant="secondary" className="rounded font-mono text-[10px] tabular-nums">
             {attempts.length}
           </Badge>
         </div>
@@ -36,7 +42,7 @@ export function AttemptsLog({ attempts, meId, className, emptyHint }: Props) {
       <CardContent>
         {attempts.length === 0 ? (
           <p className="text-muted-foreground py-8 text-center text-xs">
-            {emptyHint ?? "No guesses yet."}
+            {emptyHint ?? "No activity yet."}
           </p>
         ) : (
           <div
@@ -44,43 +50,96 @@ export function AttemptsLog({ attempts, meId, className, emptyHint }: Props) {
             className="no-scrollbar flex max-h-72 flex-col gap-1 overflow-y-auto sm:max-h-[28rem]"
           >
             {attempts.map((a) => (
-              <div
-                key={a.id}
-                className={cn(
-                  "flex items-center justify-between gap-2 rounded-sm border px-2.5 py-1.5 text-sm",
-                  a.valid
-                    ? "border-[var(--success)]/30 bg-[var(--success)]/5"
-                    : "border-white/5 bg-white/[0.02]",
-                )}
-              >
-                <div className="flex min-w-0 items-center gap-2">
-                  {a.valid ? (
-                    <CheckCircle2Icon className="size-3.5 shrink-0 text-[var(--success)]" />
-                  ) : (
-                    <XCircleIcon className="text-muted-foreground/60 size-3.5 shrink-0" />
-                  )}
-                  <span className="text-muted-foreground truncate text-[11px]">
-                    {a.name}
-                    {a.playerId === meId && <span> (you)</span>}
-                  </span>
-                  <span
-                    className={cn(
-                      "truncate font-mono text-sm",
-                      a.valid ? "text-[var(--success)]" : "text-foreground",
-                    )}
-                  >
-                    {a.word || "—"}
-                  </span>
-                </div>
-                <span className="text-muted-foreground/70 shrink-0 text-[10px] uppercase tracking-wider">
-                  {a.valid ? "winner" : humanReason(a.reason)}
-                </span>
-              </div>
+              <LogRow key={a.id} entry={a} meId={meId} />
             ))}
           </div>
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function LogRow({ entry, meId }: { entry: AttemptEntry; meId: string }) {
+  const isMe = entry.playerId === meId;
+  const nameLabel = (
+    <span className="text-muted-foreground text-[11px]">
+      {entry.name}
+      {isMe && <span> (you)</span>}
+    </span>
+  );
+
+  if (entry.kind === "guess") {
+    return (
+      <div
+        className={cn(
+          "flex items-center justify-between gap-2 rounded-sm border px-2.5 py-1.5 text-sm",
+          entry.valid
+            ? "border-[var(--success)]/30 bg-[var(--success)]/5"
+            : "border-white/5 bg-white/[0.02]",
+        )}
+      >
+        <div className="flex min-w-0 items-center gap-2">
+          {entry.valid ? (
+            <CheckCircle2Icon className="size-3.5 shrink-0 text-[var(--success)]" />
+          ) : (
+            <XCircleIcon className="text-muted-foreground/60 size-3.5 shrink-0" />
+          )}
+          {nameLabel}
+          <span
+            className={cn(
+              "truncate font-mono text-sm",
+              entry.valid ? "text-[var(--success)]" : "text-foreground",
+            )}
+          >
+            {entry.word || "—"}
+          </span>
+        </div>
+        <span className="text-muted-foreground/70 shrink-0 text-[10px] uppercase tracking-wider">
+          {entry.valid ? "winner" : humanReason(entry.reason)}
+        </span>
+      </div>
+    );
+  }
+
+  if (entry.kind === "cheat") {
+    return (
+      <div className="border-destructive/40 bg-destructive/10 flex items-center justify-between gap-2 rounded-sm border px-2.5 py-1.5 text-sm">
+        <div className="flex min-w-0 items-center gap-2">
+          <ClipboardXIcon className="text-destructive size-3.5 shrink-0" />
+          {nameLabel}
+          <span className="text-destructive truncate text-xs italic">
+            caught pasting
+          </span>
+        </div>
+        <span className="text-destructive shrink-0 text-[10px] uppercase tracking-wider">
+          −{entry.penalty}
+        </span>
+      </div>
+    );
+  }
+
+  if (entry.kind === "peek") {
+    return (
+      <div className="bg-muted/30 flex items-center gap-2 rounded-sm border border-white/5 px-2.5 py-1.5 text-sm">
+        <EyeIcon className="text-muted-foreground size-3.5 shrink-0" />
+        <span className="text-muted-foreground truncate text-xs">
+          {entry.message}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-sm border border-[var(--warning)]/30 bg-[var(--warning)]/5 px-2.5 py-1.5 text-sm">
+      <div className="flex min-w-0 items-center gap-2">
+        <HandIcon className="size-3.5 shrink-0 text-[var(--warning)]" />
+        {nameLabel}
+        <span className="text-muted-foreground text-xs">voted skip</span>
+      </div>
+      <span className="text-muted-foreground shrink-0 font-mono text-[10px] tabular-nums">
+        {entry.votes}/{entry.total}
+      </span>
+    </div>
   );
 }
 
@@ -100,6 +159,8 @@ function humanReason(reason?: string): string {
       return "letters only";
     case "empty":
       return "empty";
+    case "pasted":
+      return "pasted";
     default:
       return "invalid";
   }

@@ -44,7 +44,9 @@ export interface PublicRound {
   winner: Winner | null;
   timedOut: boolean;
   skipped: boolean;
+  skipReason: "no_words" | "voted" | null;
   possibleWordCount: number;
+  skipVoteIds: PlayerId[];
 }
 
 export interface RoomSettings {
@@ -103,6 +105,10 @@ export interface ClientToServerEvents {
     payload: { roomId: RoomId; kind: "tab" | "mouse" },
     ack: (res: AckResult<null>) => void,
   ) => void;
+  vote_skip: (
+    payload: { roomId: RoomId },
+    ack: (res: AckResult<{ votes: number; total: number }>) => void,
+  ) => void;
   end_game: (payload: { roomId: RoomId }, ack: (res: AckResult<null>) => void) => void;
 }
 
@@ -123,12 +129,17 @@ export interface ServerToClientEvents {
     roundIndex: number;
     start: string;
     end: string;
-    reason: "no_words";
+    reason: "no_words" | "voted";
+  }) => void;
+  skip_vote: (data: {
+    playerId: PlayerId;
+    name: string;
+    votes: number;
+    total: number;
   }) => void;
   cheater_caught: (data: {
     playerId: PlayerId;
     name: string;
-    word: string;
     penalty: number;
     scoreAfter: number;
   }) => void;
