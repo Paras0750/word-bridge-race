@@ -68,6 +68,7 @@ export function ActiveRound({ room, meId, attempts }: Props) {
 
   useEffect(() => {
     let lastEmit = 0;
+    let wasHidden = false;
     const emitPeek = (kind: "tab" | "mouse"): void => {
       const now = Date.now();
       if (now - lastEmit < 4000) return;
@@ -75,16 +76,35 @@ export function ActiveRound({ room, meId, attempts }: Props) {
       getSocket().emit("peeked", { roomId: room.id, kind }, () => undefined);
     };
     const onVisibility = (): void => {
-      if (document.visibilityState === "visible") emitPeek("tab");
+      if (document.visibilityState === "hidden") {
+        wasHidden = true;
+      } else if (wasHidden) {
+        wasHidden = false;
+        emitPeek("tab");
+      }
+    };
+    const onPageShow = (): void => {
+      if (wasHidden) {
+        wasHidden = false;
+        emitPeek("tab");
+      }
+    };
+    const onWindowBlur = (): void => {
+      if (document.activeElement?.tagName === "INPUT") return;
+      wasHidden = true;
     };
     const onMouseLeave = (e: MouseEvent): void => {
       const to = e.relatedTarget as Node | null;
       if (!to) emitPeek("mouse");
     };
     document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pageshow", onPageShow);
+    window.addEventListener("blur", onWindowBlur);
     document.documentElement.addEventListener("mouseleave", onMouseLeave);
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pageshow", onPageShow);
+      window.removeEventListener("blur", onWindowBlur);
       document.documentElement.removeEventListener("mouseleave", onMouseLeave);
     };
   }, [room.id]);
@@ -203,10 +223,23 @@ export function ActiveRound({ room, meId, attempts }: Props) {
               <Input
                 ref={inputRef}
                 value={word}
-                onChange={(e) =>
-                  setWord(e.target.value.replace(/[^a-zA-Z]/g, "").toLowerCase())
-                }
+                onChange={(e) => {
+                  const native = e.nativeEvent as InputEvent;
+                  if (
+                    native.inputType === "insertFromPaste" ||
+                    native.inputType === "insertFromPasteAsQuotation" ||
+                    native.inputType === "insertFromDrop"
+                  ) {
+                    pastedRef.current = true;
+                  }
+                  setWord(
+                    e.target.value.replace(/[^a-zA-Z]/g, "").toLowerCase(),
+                  );
+                }}
                 onPaste={() => {
+                  pastedRef.current = true;
+                }}
+                onDrop={() => {
                   pastedRef.current = true;
                 }}
                 placeholder={`${start}...${end}`}

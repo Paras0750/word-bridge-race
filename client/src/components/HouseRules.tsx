@@ -5,6 +5,7 @@ import {
   EyeIcon,
   HandIcon,
   ScrollTextIcon,
+  SmileIcon,
   TimerIcon,
   ZapIcon,
 } from "lucide-react";
@@ -17,23 +18,27 @@ const RULES: Array<{ icon: typeof ZapIcon; text: string }> = [
   },
   {
     icon: ClipboardXIcon,
-    text: "Cmd+V is not a word. Paste the answer and we'll out you in front of everyone.",
+    text: "Cmd+V is not a word.",
   },
   {
     icon: EyeIcon,
-    text: "Tab away mid-round? Cool, we'll let the others know you went 'researching'.",
+    text: "'Researching' mid-round is never the answer.",
   },
   {
     icon: TimerIcon,
-    text: "10 seconds and the picker has chosen nothing? RNG steps in.",
+    text: "Pickers, choose fast. Dawdle and the dictionary picks for you.",
   },
   {
     icon: HandIcon,
-    text: "Truly cursed letters? Vote skip. Unanimous = the round dies and we move on.",
+    text: "Cursed letters? Vote skip. Unanimous = the round dies, no one has to suffer.",
   },
   {
     icon: ScrollTextIcon,
-    text: "Same word can't be reused in this room. Make new mistakes.",
+    text: "Same word can't be reused in this room. Make fresh mistakes.",
+  },
+  {
+    icon: SmileIcon,
+    text: "It's words and pride. Trust your brain, type fast, take the L gracefully.",
   },
 ];
 
