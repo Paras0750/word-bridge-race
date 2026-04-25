@@ -102,7 +102,10 @@ export function Lobby({ room, meId, isHost }: Props) {
               {room.players.map((p) => (
                 <li
                   key={p.id}
-                  className="bg-muted/30 flex items-center gap-3 rounded-md border px-3 py-2.5"
+                  className={cn(
+                    "bg-muted/30 flex items-center gap-3 rounded-md border px-3 py-2.5",
+                    !p.connected && "opacity-50",
+                  )}
                 >
                   <div className="bg-muted text-muted-foreground grid size-8 shrink-0 place-items-center rounded-full text-xs font-semibold">
                     {initials(p.name) || "?"}
@@ -114,6 +117,14 @@ export function Lobby({ room, meId, isHost }: Props) {
                     {p.id === meId && (
                       <Badge variant="outline" className="rounded text-[10px]">
                         you
+                      </Badge>
+                    )}
+                    {!p.connected && (
+                      <Badge
+                        variant="outline"
+                        className="rounded text-[10px] italic"
+                      >
+                        offline
                       </Badge>
                     )}
                     {p.isHost && (

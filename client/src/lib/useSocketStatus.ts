@@ -34,7 +34,14 @@ export function useSocketStatus(): {
       else setStatus((s) => (s === "connected" ? "reconnecting" : s));
     };
     const onReconnect = (): void => {
-      setStatus("connected");
+      setStatus((prev) => {
+        if (prev === "reconnecting" || prev === "failed") {
+          import("sonner")
+            .then(({ toast }) => toast.success("Back online"))
+            .catch(() => undefined);
+        }
+        return "connected";
+      });
       setLastError(null);
     };
 

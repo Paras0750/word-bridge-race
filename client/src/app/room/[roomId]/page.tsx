@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { SERVER_URL, getSocket, reconnectSocket } from "@/lib/socket";
 import { useSocketStatus } from "@/lib/useSocketStatus";
+import { getOrCreatePlayerId } from "@/lib/identity";
 import type { PublicRoom, Winner } from "@/lib/types";
 import { Lobby } from "@/components/Lobby";
 import { Countdown } from "@/components/Countdown";
@@ -246,14 +247,18 @@ export default function RoomPage() {
     socket.on("error_msg", onError);
 
     const tryJoin = (): void => {
-      socket.emit("join_room", { roomId, name }, (res) => {
-        if (!res.ok) {
-          setError(res.error);
-          return;
-        }
-        setMeId(res.data.playerId);
-        setRoom(res.data.room);
-      });
+      socket.emit(
+        "join_room",
+        { roomId, name, playerId: getOrCreatePlayerId() },
+        (res) => {
+          if (!res.ok) {
+            setError(res.error);
+            return;
+          }
+          setMeId(res.data.playerId);
+          setRoom(res.data.room);
+        },
+      );
     };
 
     const onConnect = (): void => {

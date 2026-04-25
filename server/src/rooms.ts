@@ -161,8 +161,11 @@ export function pickRandomLetter(): string {
 }
 
 export function selectPickers(room: Room): { start: Player; end: Player } {
-  const eligible = room.players.filter((p) => p.ready || room.players.every((q) => !q.ready));
-  const pool = eligible.length >= 2 ? eligible : room.players;
+  const connected = room.players.filter((p) => p.connected);
+  const eligible = connected.filter(
+    (p) => p.ready || connected.every((q) => !q.ready),
+  );
+  const pool = eligible.length >= 2 ? eligible : connected;
   if (pool.length < 2) throw new Error("Not enough players to pick");
 
   const recent = new Set(room.recentPickers);

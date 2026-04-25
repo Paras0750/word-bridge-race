@@ -41,6 +41,13 @@ const STREAK_BONUS_POINTS = 5;
 const PASTE_PENALTY = 5;
 const PEEK_THROTTLE_MS = 4_000;
 const SKIP_GRACE_MS = 4_000;
+const DISCONNECT_GRACE_MS = 2 * 60 * 1000;
+const PLAYER_ID_RE = /^[A-Za-z0-9-]{8,64}$/;
+
+function adoptPlayerId(raw: unknown, fallback: string): string {
+  if (typeof raw === "string" && PLAYER_ID_RE.test(raw)) return raw;
+  return fallback;
+}
 
 const PEEK_MESSAGES_TAB: readonly string[] = [
   "👀 welcome back, {name}",
@@ -115,6 +122,26 @@ function markEmptyState(room: Room): void {
 setInterval(() => {
   const now = Date.now();
   for (const room of rooms.values()) {
+    let mutated = false;
+    for (const p of [...room.players]) {
+      if (
+        !p.connected &&
+        p.disconnectedAt !== null &&
+        now - p.disconnectedAt > DISCONNECT_GRACE_MS
+      ) {
+        removePlayer(room, p.id);
+        mutated = true;
+      }
+    }
+    if (mutated) {
+      markEmptyState(room);
+      const connectedCount = room.players.filter((q) => q.connected).length;
+      if (room.phase !== "lobby" && connectedCount < 2) {
+        returnToLobby(room);
+      } else {
+        broadcastRoom(room);
+      }
+    }
     if (
       room.emptySinceMs !== null &&
       now - room.emptySinceMs > ROOM_EMPTY_GRACE_MS
@@ -130,7 +157,7 @@ setInterval(() => {
       destroyRoom(room);
     }
   }
-}, 30_000).unref();
+}, 15_000).unref();
 
 function beginPickPhase(room: Room): void {
   if (room.players.length < 2) {
@@ -351,6 +378,7 @@ io.on("connection", (socket: IOSocket) => {
     if (!validation.ok) return ack({ ok: false, error: validation.error });
     const name = validation.name;
 
+    socket.data.playerId = adoptPlayerId(payload?.playerId, socket.data.playerId);
     detachFromCurrentRoom();
 
     const roomId = generateRoomId(new Set(rooms.keys()));
@@ -362,6 +390,8 @@ io.on("connection", (socket: IOSocket) => {
       score: 0,
       streak: 0,
       bestMs: null,
+      connected: true,
+      disconnectedAt: null,
     };
     const room = createRoom(roomId, player);
     rooms.set(roomId, room);
@@ -381,6 +411,8 @@ io.on("connection", (socket: IOSocket) => {
     const validation = validateName(payload?.name ?? "");
     if (!validation.ok) return ack({ ok: false, error: validation.error });
     const name = validation.name;
+
+    socket.data.playerId = adoptPlayerId(payload?.playerId, socket.data.playerId);
 
     const room = rooms.get(roomId);
     if (!room) return ack({ ok: false, error: "Room not found" });
@@ -411,11 +443,15 @@ io.on("connection", (socket: IOSocket) => {
         score: 0,
         streak: 0,
         bestMs: null,
+        connected: true,
+        disconnectedAt: null,
       };
       room.players.push(player);
       room.emptySinceMs = null;
-    } else if (existing.name !== name) {
-      existing.name = name;
+    } else {
+      if (existing.name !== name) existing.name = name;
+      existing.connected = true;
+      existing.disconnectedAt = null;
     }
 
     socket.data.roomId = roomId;
@@ -482,9 +518,10 @@ io.on("connection", (socket: IOSocket) => {
       return ack({ ok: false, error: "Only the host can start" });
     if (room.phase !== "lobby")
       return ack({ ok: false, error: "Round already in progress" });
-    if (room.players.length < 2)
-      return ack({ ok: false, error: "Need at least 2 players" });
-    if (!room.players.every((p) => p.ready))
+    const connected = room.players.filter((p) => p.connected);
+    if (connected.length < 2)
+      return ack({ ok: false, error: "Need at least 2 connected players" });
+    if (!connected.every((p) => p.ready))
       return ack({ ok: false, error: "All players must be ready" });
 
     ack({ ok: true, data: null });
@@ -681,10 +718,20 @@ io.on("connection", (socket: IOSocket) => {
     if (!roomId) return;
     const room = rooms.get(roomId);
     if (!room) return;
-    removePlayer(room, socket.data.playerId);
+
+    const player = findPlayer(room, socket.data.playerId);
+    if (room.phase === "lobby") {
+      removePlayer(room, socket.data.playerId);
+    } else if (player) {
+      player.connected = false;
+      player.disconnectedAt = Date.now();
+      player.ready = false;
+    }
+
     markEmptyState(room);
-    if (room.phase !== "lobby" && room.players.length < 2) {
-      returnToLobby(room, "A player disconnected, returning to lobby");
+    const connectedCount = room.players.filter((p) => p.connected).length;
+    if (room.phase !== "lobby" && connectedCount < 1) {
+      returnToLobby(room, "Everyone disconnected — back to lobby");
     } else {
       broadcastRoom(room);
     }

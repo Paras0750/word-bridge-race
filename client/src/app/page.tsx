@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getSocket } from "@/lib/socket";
+import { getOrCreatePlayerId } from "@/lib/identity";
 
 const NAME_KEY = "wbr.name";
 
@@ -42,14 +43,18 @@ export default function HomePage() {
     }
     setBusy(true);
     setError("");
-    getSocket().emit("create_room", { name: name.trim() }, (res) => {
-      setBusy(false);
-      if (!res.ok) {
-        setError(res.error);
-        return;
-      }
-      router.push(`/room/${res.data.roomId}`);
-    });
+    getSocket().emit(
+      "create_room",
+      { name: name.trim(), playerId: getOrCreatePlayerId() },
+      (res) => {
+        setBusy(false);
+        if (!res.ok) {
+          setError(res.error);
+          return;
+        }
+        router.push(`/room/${res.data.roomId}`);
+      },
+    );
   };
 
   const handleJoin = (): void => {
@@ -66,7 +71,11 @@ export default function HomePage() {
     setError("");
     getSocket().emit(
       "join_room",
-      { roomId: roomCode.trim().toUpperCase(), name: name.trim() },
+      {
+        roomId: roomCode.trim().toUpperCase(),
+        name: name.trim(),
+        playerId: getOrCreatePlayerId(),
+      },
       (res) => {
         setBusy(false);
         if (!res.ok) {

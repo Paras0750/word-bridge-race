@@ -165,10 +165,25 @@ export function Scoreboard({ room, attempts, meId, isHost }: Props) {
                     {idx + 1}
                   </span>
                   <div className="flex min-w-0 flex-1 items-center gap-2">
-                    <span className="truncate text-sm font-medium">{p.name}</span>
+                    <span
+                      className={cn(
+                        "truncate text-sm font-medium",
+                        !p.connected && "opacity-50",
+                      )}
+                    >
+                      {p.name}
+                    </span>
                     {p.id === meId && (
                       <Badge variant="outline" className="rounded text-[10px]">
                         you
+                      </Badge>
+                    )}
+                    {!p.connected && (
+                      <Badge
+                        variant="outline"
+                        className="rounded text-[10px] italic opacity-70"
+                      >
+                        offline
                       </Badge>
                     )}
                     {p.isHost && (

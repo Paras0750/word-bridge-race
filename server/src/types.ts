@@ -9,6 +9,8 @@ export interface Player {
   score: number;
   streak: number;
   bestMs: number | null;
+  connected: boolean;
+  disconnectedAt: number | null;
 }
 
 export type RoomPhase =
@@ -115,11 +117,11 @@ export interface PublicRoom {
 
 export interface ClientToServerEvents {
   create_room: (
-    payload: { name: string },
+    payload: { name: string; playerId?: PlayerId },
     ack: (res: AckResult<{ roomId: RoomId; playerId: PlayerId }>) => void,
   ) => void;
   join_room: (
-    payload: { roomId: RoomId; name: string },
+    payload: { roomId: RoomId; name: string; playerId?: PlayerId },
     ack: (res: AckResult<{ playerId: PlayerId; room: PublicRoom }>) => void,
   ) => void;
   leave_room: (payload: { roomId: RoomId }, ack: (res: AckResult<null>) => void) => void;
