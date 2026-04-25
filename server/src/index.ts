@@ -10,11 +10,13 @@ import {
   createRoom,
   findPlayer,
   generateRoomId,
+  isNameTaken,
   pickRandomLetter,
   removePlayer,
-  sanitizeName,
   selectPickers,
   toPublicRoom,
+  validateName,
+  validateRoomCode,
 } from "./rooms";
 import { validateWord } from "./validate";
 import { dictionarySize, loadDictionary } from "./dictionary";
@@ -269,9 +271,29 @@ io.on("connection", (socket: IOSocket) => {
   socket.data.roomId = null;
   socket.data.name = "";
 
+  const detachFromCurrentRoom = (): void => {
+    const prevRoomId = socket.data.roomId;
+    if (!prevRoomId) return;
+    const prev = rooms.get(prevRoomId);
+    if (prev) {
+      removePlayer(prev, socket.data.playerId);
+      markEmptyState(prev);
+      if (prev.phase !== "lobby" && prev.players.length < 2) {
+        returnToLobby(prev, "A player left, returning to lobby");
+      } else {
+        broadcastRoom(prev);
+      }
+    }
+    socket.leave(prevRoomId);
+    socket.data.roomId = null;
+  };
+
   socket.on("create_room", (payload, ack) => {
-    const name = sanitizeName(payload?.name ?? "");
-    if (!name) return ack({ ok: false, error: "Name is required" });
+    const validation = validateName(payload?.name ?? "");
+    if (!validation.ok) return ack({ ok: false, error: validation.error });
+    const name = validation.name;
+
+    detachFromCurrentRoom();
 
     const roomId = generateRoomId(new Set(rooms.keys()));
     const player: Player = {
@@ -295,15 +317,28 @@ io.on("connection", (socket: IOSocket) => {
   });
 
   socket.on("join_room", (payload, ack) => {
-    const roomId = (payload?.roomId ?? "").trim().toUpperCase();
-    const name = sanitizeName(payload?.name ?? "");
-    if (!roomId) return ack({ ok: false, error: "Room code is required" });
-    if (!name) return ack({ ok: false, error: "Name is required" });
+    const roomId = validateRoomCode(payload?.roomId ?? "");
+    if (!roomId) return ack({ ok: false, error: "Invalid room code" });
+
+    const validation = validateName(payload?.name ?? "");
+    if (!validation.ok) return ack({ ok: false, error: validation.error });
+    const name = validation.name;
 
     const room = rooms.get(roomId);
     if (!room) return ack({ ok: false, error: "Room not found" });
 
+    if (socket.data.roomId && socket.data.roomId !== roomId) {
+      detachFromCurrentRoom();
+    }
+
     const existing = findPlayer(room, socket.data.playerId);
+
+    if (isNameTaken(room, name, existing?.id))
+      return ack({
+        ok: false,
+        error: "That name is already taken in this room — try another",
+      });
+
     if (!existing) {
       if (room.players.length >= MAX_PLAYERS)
         return ack({ ok: false, error: "Room is full" });
@@ -321,6 +356,8 @@ io.on("connection", (socket: IOSocket) => {
       };
       room.players.push(player);
       room.emptySinceMs = null;
+    } else if (existing.name !== name) {
+      existing.name = name;
     }
 
     socket.data.roomId = roomId;
@@ -433,7 +470,7 @@ io.on("connection", (socket: IOSocket) => {
     if (room.round.winner)
       return ack({ ok: false, error: "Round already won" });
 
-    const rawWord = (payload.word ?? "").trim().toLowerCase();
+    const rawWord = (payload.word ?? "").trim().toLowerCase().slice(0, 30);
     const result = validateWord(
       rawWord,
       room.round.start,

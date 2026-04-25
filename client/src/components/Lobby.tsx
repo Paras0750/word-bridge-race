@@ -1,7 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { CheckIcon, CrownIcon, FlameIcon, PlayIcon } from "lucide-react";
+import {
+  CheckIcon,
+  CrownIcon,
+  FlameIcon,
+  Loader2Icon,
+  PlayIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -34,6 +40,8 @@ function initials(name: string): string {
 
 export function Lobby({ room, meId, isHost }: Props) {
   const [error, setError] = useState<string>("");
+  const [readyBusy, setReadyBusy] = useState<boolean>(false);
+  const [startBusy, setStartBusy] = useState<boolean>(false);
 
   const me = room.players.find((p) => p.id === meId);
   const allReady =
@@ -42,20 +50,25 @@ export function Lobby({ room, meId, isHost }: Props) {
   const readyPct = (readyCount / Math.max(1, room.players.length)) * 100;
 
   const toggleReady = (): void => {
-    if (!me) return;
+    if (!me || readyBusy) return;
     setError("");
+    setReadyBusy(true);
     getSocket().emit(
       "set_ready",
       { roomId: room.id, ready: !me.ready },
       (res) => {
+        setReadyBusy(false);
         if (!res.ok) setError(res.error);
       },
     );
   };
 
   const startRound = (): void => {
+    if (startBusy) return;
     setError("");
+    setStartBusy(true);
     getSocket().emit("start_round", { roomId: room.id }, (res) => {
+      setStartBusy(false);
       if (!res.ok) setError(res.error);
     });
   };
@@ -163,9 +176,14 @@ export function Lobby({ room, meId, isHost }: Props) {
                     "border-[var(--success)]/40 bg-[var(--success)]/10 text-[var(--success)] hover:bg-[var(--success)]/15",
                 )}
                 onClick={toggleReady}
-                disabled={!me}
+                disabled={!me || readyBusy}
               >
-                {me?.ready ? (
+                {readyBusy ? (
+                  <>
+                    <Loader2Icon data-icon="inline-start" className="animate-spin" />
+                    Saving…
+                  </>
+                ) : me?.ready ? (
                   <>
                     <CheckIcon data-icon="inline-start" />
                     You're ready · tap to undo
@@ -180,14 +198,23 @@ export function Lobby({ room, meId, isHost }: Props) {
                   size="lg"
                   className="h-11 w-full text-sm font-medium"
                   onClick={startRound}
-                  disabled={!allReady}
+                  disabled={!allReady || startBusy}
                 >
-                  <PlayIcon data-icon="inline-start" />
-                  {allReady
-                    ? "Start round"
-                    : room.players.length < 2
-                      ? "Need at least 2 players"
-                      : `Waiting for ${room.players.length - readyCount} player${room.players.length - readyCount === 1 ? "" : "s"}`}
+                  {startBusy ? (
+                    <Loader2Icon
+                      data-icon="inline-start"
+                      className="animate-spin"
+                    />
+                  ) : (
+                    <PlayIcon data-icon="inline-start" />
+                  )}
+                  {startBusy
+                    ? "Starting…"
+                    : allReady
+                      ? "Start round"
+                      : room.players.length < 2
+                        ? "Need at least 2 players"
+                        : `Waiting for ${room.players.length - readyCount} player${room.players.length - readyCount === 1 ? "" : "s"}`}
                 </Button>
               ) : (
                 <p className="text-muted-foreground rounded-md border border-dashed border-white/10 px-3 py-2.5 text-center text-xs">

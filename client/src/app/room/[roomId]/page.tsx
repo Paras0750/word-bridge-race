@@ -46,9 +46,20 @@ export default function RoomPage() {
   const [copied, setCopied] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
   const [slow, setSlow] = useState<boolean>(false);
+  const [retrying, setRetrying] = useState<boolean>(false);
   const joinedRef = useRef<boolean>(false);
   const lastRoundRef = useRef<number>(0);
   const { status: socketStatus, lastError: socketError } = useSocketStatus();
+
+  const handleRetry = (): void => {
+    setRetrying(true);
+    reconnectSocket();
+    setTimeout(() => setRetrying(false), 2500);
+  };
+
+  useEffect(() => {
+    if (socketStatus === "connected") setRetrying(false);
+  }, [socketStatus]);
 
   useEffect(() => {
     const socket = getSocket();
@@ -227,9 +238,20 @@ export default function RoomPage() {
                 </code>
               </p>
               <div className="mt-6 flex justify-center gap-2">
-                <Button variant="outline" onClick={() => reconnectSocket()}>
-                  <RotateCwIcon data-icon="inline-start" />
-                  Retry
+                <Button
+                  variant="outline"
+                  onClick={handleRetry}
+                  disabled={retrying}
+                >
+                  {retrying ? (
+                    <Loader2Icon
+                      data-icon="inline-start"
+                      className="animate-spin"
+                    />
+                  ) : (
+                    <RotateCwIcon data-icon="inline-start" />
+                  )}
+                  {retrying ? "Retrying…" : "Retry"}
                 </Button>
                 <Button
                   onClick={() =>
@@ -258,10 +280,18 @@ export default function RoomPage() {
                     variant="outline"
                     size="sm"
                     className="mt-4"
-                    onClick={() => reconnectSocket()}
+                    onClick={handleRetry}
+                    disabled={retrying}
                   >
-                    <RotateCwIcon data-icon="inline-start" />
-                    Retry now
+                    {retrying ? (
+                      <Loader2Icon
+                        data-icon="inline-start"
+                        className="animate-spin"
+                      />
+                    ) : (
+                      <RotateCwIcon data-icon="inline-start" />
+                    )}
+                    {retrying ? "Retrying…" : "Retry now"}
                   </Button>
                 </>
               )}
@@ -275,18 +305,23 @@ export default function RoomPage() {
   return (
     <main className="mx-auto min-h-dvh max-w-4xl px-4 py-4 sm:py-6">
       {(socketStatus === "reconnecting" || socketStatus === "failed") && (
-        <div className="bg-destructive/10 text-destructive mb-3 flex items-center justify-between gap-2 rounded-md border border-destructive/30 px-3 py-2 text-xs">
+        <div className="bg-destructive/10 text-destructive border-destructive/30 mb-3 flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-xs">
           <span className="inline-flex items-center gap-2">
-            <WifiOffIcon className="size-3.5" />
-            {socketStatus === "failed"
+            {socketStatus === "reconnecting" || retrying ? (
+              <Loader2Icon className="size-3.5 animate-spin" />
+            ) : (
+              <WifiOffIcon className="size-3.5" />
+            )}
+            {socketStatus === "failed" && !retrying
               ? "Disconnected from server"
               : "Reconnecting…"}
           </span>
           <button
-            onClick={() => reconnectSocket()}
-            className="hover:underline"
+            onClick={handleRetry}
+            disabled={retrying}
+            className="disabled:opacity-50 hover:underline"
           >
-            retry
+            {retrying ? "retrying…" : "retry"}
           </button>
         </div>
       )}

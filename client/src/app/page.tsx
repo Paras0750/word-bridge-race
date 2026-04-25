@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRightIcon, PlusIcon, SparklesIcon } from "lucide-react";
+import { ArrowRightIcon, Loader2Icon, PlusIcon, SparklesIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,8 +35,9 @@ export default function HomePage() {
   };
 
   const handleCreate = (): void => {
-    if (!name.trim()) {
-      setError("Enter your name first");
+    const trimmed = name.trim();
+    if (trimmed.length < 2) {
+      setError("Name must be at least 2 characters");
       return;
     }
     setBusy(true);
@@ -52,12 +53,13 @@ export default function HomePage() {
   };
 
   const handleJoin = (): void => {
-    if (!name.trim()) {
-      setError("Enter your name first");
+    const trimmed = name.trim();
+    if (trimmed.length < 2) {
+      setError("Name must be at least 2 characters");
       return;
     }
-    if (!roomCode.trim()) {
-      setError("Enter a room code");
+    if (roomCode.trim().length !== 6) {
+      setError("Room code is 6 characters");
       return;
     }
     setBusy(true);
@@ -122,8 +124,12 @@ export default function HomePage() {
           onClick={handleCreate}
           disabled={busy}
         >
-          <PlusIcon data-icon="inline-start" />
-          Create new room
+          {busy ? (
+            <Loader2Icon data-icon="inline-start" className="animate-spin" />
+          ) : (
+            <PlusIcon data-icon="inline-start" />
+          )}
+          {busy ? "Creating…" : "Create new room"}
         </Button>
 
         <div className="my-4 flex items-center gap-3">
@@ -143,7 +149,14 @@ export default function HomePage() {
         >
           <Input
             value={roomCode}
-            onChange={(e) => setRoomCode(e.target.value.toUpperCase().slice(0, 6))}
+            onChange={(e) =>
+              setRoomCode(
+                e.target.value
+                  .toUpperCase()
+                  .replace(/[^A-Z2-9]/g, "")
+                  .slice(0, 6),
+              )
+            }
             placeholder="ROOM CODE"
             maxLength={6}
             enterKeyHint="go"
@@ -158,8 +171,12 @@ export default function HomePage() {
             className="h-11 px-4"
             disabled={busy}
           >
-            Join
-            <ArrowRightIcon data-icon="inline-end" />
+            {busy ? "Joining…" : "Join"}
+            {busy ? (
+              <Loader2Icon data-icon="inline-end" className="animate-spin" />
+            ) : (
+              <ArrowRightIcon data-icon="inline-end" />
+            )}
           </Button>
         </form>
 

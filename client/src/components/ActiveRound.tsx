@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { SendIcon } from "lucide-react";
+import { Loader2Icon, SendIcon } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -80,7 +80,10 @@ export function ActiveRound({ room, meId, attempts }: Props) {
     });
   };
 
-  const otherPlayers = room.players.filter((p) => p.id !== meId);
+  const sortedPlayers = [...room.players].sort((a, b) => {
+    if (a.score !== b.score) return b.score - a.score;
+    return a.name.localeCompare(b.name);
+  });
 
   const barColor =
     remainingPct > 33
@@ -147,6 +150,7 @@ export function ActiveRound({ room, meId, attempts }: Props) {
                 e.preventDefault();
                 submit();
               }}
+              autoComplete="off"
             >
               <Input
                 ref={inputRef}
@@ -160,8 +164,14 @@ export function ActiveRound({ room, meId, attempts }: Props) {
                 inputMode="text"
                 autoCapitalize="none"
                 autoCorrect="off"
+                autoComplete="off"
                 spellCheck={false}
                 enterKeyHint="send"
+                name="wbr-answer"
+                aria-autocomplete="none"
+                data-form-type="other"
+                data-lpignore="true"
+                data-1p-ignore="true"
                 className="h-11 flex-1 font-mono text-base lowercase"
               />
               <Button
@@ -170,8 +180,12 @@ export function ActiveRound({ room, meId, attempts }: Props) {
                 className="h-11 px-5 sm:px-6"
                 disabled={submitting || !word.trim()}
               >
-                <SendIcon data-icon="inline-start" />
-                Submit
+                {submitting ? (
+                  <Loader2Icon data-icon="inline-start" className="animate-spin" />
+                ) : (
+                  <SendIcon data-icon="inline-start" />
+                )}
+                {submitting ? "Sending…" : "Submit"}
               </Button>
             </form>
 
@@ -201,26 +215,37 @@ export function ActiveRound({ room, meId, attempts }: Props) {
           </CardContent>
         </Card>
 
-        {otherPlayers.length > 0 && (
-          <Card>
-            <CardContent className="pt-5">
-              <p className="text-muted-foreground mb-2 text-[10px] uppercase tracking-[0.2em]">
-                Racing against
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {otherPlayers.map((p) => (
-                  <Badge key={p.id} variant="outline" className="gap-1.5 rounded">
-                    <span className="size-1.5 rounded-full bg-[var(--success)]" />
-                    {p.name}
-                    {p.score > 0 && (
-                      <span className="text-muted-foreground">· {p.score}pts</span>
+        <Card>
+          <CardContent className="pt-5">
+            <p className="text-muted-foreground mb-2 text-[10px] uppercase tracking-[0.2em]">
+              Players
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {sortedPlayers.map((p) => {
+                const isMe = p.id === meId;
+                return (
+                  <Badge
+                    key={p.id}
+                    variant="outline"
+                    className={cn(
+                      "gap-1.5 rounded font-normal",
+                      isMe && "border-foreground/40 bg-foreground/5",
                     )}
+                  >
+                    <span className="size-1.5 rounded-full bg-[var(--success)]" />
+                    <span className={cn(isMe && "font-medium")}>
+                      {p.name}
+                      {isMe && <span className="text-muted-foreground"> (you)</span>}
+                    </span>
+                    <span className="text-muted-foreground font-mono tabular-nums">
+                      · {p.score}
+                    </span>
                   </Badge>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <AttemptsLog attempts={attempts} meId={meId} emptyHint="Be the first to guess!" />

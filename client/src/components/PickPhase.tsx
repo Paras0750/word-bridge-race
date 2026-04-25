@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Loader2Icon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,8 +19,9 @@ export function PickPhase({ room, meId }: Props) {
   const slot: "start" | "end" = room.phase === "pick_start" ? "start" : "end";
   const picker = slot === "start" ? room.round?.pickers.start : room.round?.pickers.end;
   const isMyTurn = picker?.playerId === meId;
-  const [submitting, setSubmitting] = useState<boolean>(false);
+  const [submittingLetter, setSubmittingLetter] = useState<string | null>(null);
   const [error, setError] = useState<string>("");
+  const submitting = submittingLetter !== null;
 
   const totalMs = room.settings.pickTimeoutSeconds * 1000;
   const [secondsLeft, setSecondsLeft] = useState<number>(room.settings.pickTimeoutSeconds);
@@ -38,10 +40,10 @@ export function PickPhase({ room, meId }: Props) {
 
   const pick = (letter: string): void => {
     if (!isMyTurn || submitting) return;
-    setSubmitting(true);
+    setSubmittingLetter(letter);
     setError("");
     getSocket().emit("pick_letter", { roomId: room.id, slot, letter }, (res) => {
-      setSubmitting(false);
+      setSubmittingLetter(null);
       if (!res.ok) setError(res.error);
     });
   };
@@ -64,12 +66,9 @@ export function PickPhase({ room, meId }: Props) {
             )}
           </CardTitle>
 
-          {slot === "end" && room.round?.start && (
-            <p className="text-muted-foreground mt-2 text-sm">
-              Start is{" "}
-              <span className="text-foreground font-mono text-base font-semibold uppercase">
-                {room.round.start}
-              </span>
+          {slot === "end" && (
+            <p className="text-muted-foreground mt-2 text-xs">
+              Start letter is hidden — pick blind.
             </p>
           )}
 
@@ -99,9 +98,15 @@ export function PickPhase({ room, meId }: Props) {
                 className={cn(
                   "h-11 w-full p-0 font-mono text-base uppercase",
                   !isMyTurn && "opacity-50",
+                  submittingLetter === l &&
+                    "border-foreground/40 bg-foreground/10",
                 )}
               >
-                {l}
+                {submittingLetter === l ? (
+                  <Loader2Icon className="size-4 animate-spin" />
+                ) : (
+                  l
+                )}
               </Button>
             ))}
           </div>

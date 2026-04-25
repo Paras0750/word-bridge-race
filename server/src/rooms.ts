@@ -75,14 +75,15 @@ export function toPublicRoom(room: Room): PublicRoom {
         index: room.round.index,
         pickers: room.round.pickers,
         start:
-          room.phase === "active" ||
-          room.phase === "scoreboard" ||
           room.phase === "countdown" ||
-          room.phase === "pick_end"
+          room.phase === "active" ||
+          room.phase === "scoreboard"
             ? room.round.start
             : "",
         end:
-          room.phase === "active" || room.phase === "scoreboard" || room.phase === "countdown"
+          room.phase === "countdown" ||
+          room.phase === "active" ||
+          room.phase === "scoreboard"
             ? room.round.end
             : "",
         startedAt: room.round.startedAt,
@@ -122,8 +123,32 @@ export function removePlayer(room: Room, playerId: PlayerId): Player | undefined
   return removed;
 }
 
+const NAME_ALLOWED = /^[\p{L}\p{N} _.\-]+$/u;
+const ROOM_CODE_RE = /^[A-Z2-9]{6}$/;
+
 export function sanitizeName(raw: string): string {
-  return raw.trim().slice(0, 20);
+  return raw.replace(/\s+/g, " ").trim().slice(0, 20);
+}
+
+export function validateName(raw: string): { ok: true; name: string } | { ok: false; error: string } {
+  const name = sanitizeName(raw);
+  if (name.length < 2) return { ok: false, error: "Name must be at least 2 characters" };
+  if (name.length > 20) return { ok: false, error: "Name must be 20 characters or less" };
+  if (!NAME_ALLOWED.test(name))
+    return { ok: false, error: "Name has invalid characters" };
+  return { ok: true, name };
+}
+
+export function validateRoomCode(raw: string): string | null {
+  const cleaned = (raw ?? "").trim().toUpperCase();
+  return ROOM_CODE_RE.test(cleaned) ? cleaned : null;
+}
+
+export function isNameTaken(room: Room, name: string, exceptPlayerId?: PlayerId): boolean {
+  const lower = name.trim().toLowerCase();
+  return room.players.some(
+    (p) => p.id !== exceptPlayerId && p.name.trim().toLowerCase() === lower,
+  );
 }
 
 export function pickRandomLetter(): string {
