@@ -20,6 +20,7 @@ import {
 } from "./rooms";
 import { validateWord } from "./validate";
 import { countMatching, dictionarySize, loadDictionary } from "./dictionary";
+import { log, shortId } from "./logger";
 import type {
   ClientToServerEvents,
   InterServerEvents,
@@ -71,8 +72,7 @@ function pickPeekMessage(name: string, kind: "tab" | "mouse"): string {
 }
 
 loadDictionary();
-// eslint-disable-next-line no-console
-console.log(`[word-bridge-race] dictionary loaded: ${dictionarySize()} words`);
+log.info("dictionary.loaded", { words: dictionarySize() });
 
 const app = express();
 app.use(cors({ origin: CORS_ORIGIN }));
@@ -113,6 +113,11 @@ function broadcastRoom(room: Room): void {
 function destroyRoom(room: Room): void {
   clearAllTimers(room);
   rooms.delete(room.id);
+  log.info("room.destroyed", {
+    roomId: room.id,
+    rounds: room.roundsPlayed,
+    ageSec: Math.floor((Date.now() - room.createdAt) / 1000),
+  });
 }
 
 function markEmptyState(room: Room): void {
@@ -131,6 +136,12 @@ setInterval(() => {
       ) {
         removePlayer(room, p.id);
         mutated = true;
+        log.info("player.kicked.timeout", {
+          roomId: room.id,
+          playerId: shortId(p.id),
+          name: p.name,
+          offlineMs: now - p.disconnectedAt,
+        });
       }
     }
     if (mutated) {
@@ -194,6 +205,11 @@ function beginPickPhase(room: Room): void {
   };
 
   schedulePickTimeout(room, "start");
+  log.info("round.pick.start", {
+    roomId: room.id,
+    roundIndex: room.round.index,
+    picker: pickers.start.name,
+  });
   broadcastRoom(room);
 }
 
@@ -232,6 +248,13 @@ function applyPick(
         Date.now() + room.settings.pickTimeoutSeconds * 1000;
     }
     schedulePickTimeout(room, "end");
+    log.info("round.pick.locked", {
+      roomId: room.id,
+      roundIndex: room.round.index,
+      slot: "start",
+      letter: normalized,
+      auto: fromTimeout,
+    });
     broadcastRoom(room);
     return;
   }
@@ -240,10 +263,26 @@ function applyPick(
 
   const possible = countMatching(room.round.start, room.round.end);
   room.round.possibleWordCount = possible;
+  log.info("round.pick.locked", {
+    roomId: room.id,
+    roundIndex: room.round.index,
+    slot: "end",
+    letter: normalized,
+    auto: fromTimeout,
+    start: room.round.start,
+    possible,
+  });
 
   if (possible === 0) {
     room.round.skipped = true;
     room.round.skipReason = "no_words";
+    log.warn("round.skipped", {
+      roomId: room.id,
+      roundIndex: room.round.index,
+      reason: "no_words",
+      start: room.round.start,
+      end: room.round.end,
+    });
     io.to(room.id).emit("round_skipped", {
       roundIndex: room.round.index,
       start: room.round.start,
@@ -301,6 +340,13 @@ function beginCountdown(room: Room): void {
       endsAt: room.round.endsAt,
     });
     io.to(room.id).emit("round_active");
+    log.info("round.active", {
+      roomId: room.id,
+      roundIndex: room.round.index,
+      start: room.round.start,
+      end: room.round.end,
+      possible: room.round.possibleWordCount,
+    });
     broadcastRoom(room);
 
     if (room.roundTimer) clearTimeout(room.roundTimer);
@@ -310,6 +356,10 @@ function beginCountdown(room: Room): void {
         if (!room.round || room.round.winner) return;
         room.round.timedOut = true;
         for (const p of room.players) p.streak = 0;
+        log.warn("round.timeout", {
+          roomId: room.id,
+          roundIndex: room.round.index,
+        });
         io.to(room.id).emit("round_timeout", { roundIndex: room.round.index });
         finishRound(room);
       },
@@ -355,6 +405,7 @@ io.on("connection", (socket: IOSocket) => {
   socket.data.playerId = randomUUID();
   socket.data.roomId = null;
   socket.data.name = "";
+  log.debug("socket.connected", { sid: socket.id });
 
   const detachFromCurrentRoom = (): void => {
     const prevRoomId = socket.data.roomId;
@@ -399,6 +450,12 @@ io.on("connection", (socket: IOSocket) => {
     socket.data.roomId = roomId;
     socket.data.name = name;
     socket.join(roomId);
+
+    log.info("room.created", {
+      roomId,
+      hostId: shortId(player.id),
+      hostName: name,
+    });
 
     ack({ ok: true, data: { roomId, playerId: player.id } });
     broadcastRoom(room);
@@ -448,10 +505,22 @@ io.on("connection", (socket: IOSocket) => {
       };
       room.players.push(player);
       room.emptySinceMs = null;
+      log.info("player.joined", {
+        roomId,
+        playerId: shortId(player.id),
+        name,
+        size: room.players.length,
+      });
     } else {
+      const wasOffline = !existing.connected;
       if (existing.name !== name) existing.name = name;
       existing.connected = true;
       existing.disconnectedAt = null;
+      log.info(wasOffline ? "player.rejoined" : "player.rebound", {
+        roomId,
+        playerId: shortId(existing.id),
+        name,
+      });
     }
 
     socket.data.roomId = roomId;
@@ -507,6 +576,11 @@ io.on("connection", (socket: IOSocket) => {
 
     const next = clampSettings(room.settings, payload.settings ?? {});
     room.settings = next;
+    log.info("settings.changed", {
+      roomId: room.id,
+      hostId: shortId(socket.data.playerId),
+      settings: next,
+    });
     ack({ ok: true, data: { settings: next } });
     broadcastRoom(room);
   });
@@ -574,6 +648,13 @@ io.on("connection", (socket: IOSocket) => {
       const before = player.score;
       player.score = Math.max(0, before - PASTE_PENALTY);
       const taken = before - player.score;
+      log.warn("cheat.paste", {
+        roomId: room.id,
+        roundIndex: room.round.index,
+        playerId: shortId(player.id),
+        name: player.name,
+        penalty: taken,
+      });
       io.to(room.id).emit("cheater_caught", {
         playerId: player.id,
         name: player.name,
@@ -630,6 +711,16 @@ io.on("connection", (socket: IOSocket) => {
     room.round.winner = winnerData;
     room.usedWords.add(rawWord);
 
+    log.info("round.winner", {
+      roomId: room.id,
+      roundIndex: room.round.index,
+      playerId: shortId(player.id),
+      name: player.name,
+      word: rawWord,
+      tookMs,
+      streak: player.streak,
+      bonus,
+    });
     io.to(room.id).emit("winner", winnerData);
     ack({ ok: true, data: { accepted: true } });
     finishRound(room);
@@ -682,9 +773,22 @@ io.on("connection", (socket: IOSocket) => {
     broadcastRoom(room);
     ack({ ok: true, data: { votes, total } });
 
+    log.info("round.vote_skip", {
+      roomId: room.id,
+      roundIndex: room.round.index,
+      voter: player.name,
+      votes,
+      total,
+    });
+
     if (votes >= total && total >= 1) {
       room.round.skipped = true;
       room.round.skipReason = "voted";
+      log.warn("round.skipped", {
+        roomId: room.id,
+        roundIndex: room.round.index,
+        reason: "voted",
+      });
       io.to(room.id).emit("round_skipped", {
         roundIndex: room.round.index,
         start: room.round.start,
@@ -713,7 +817,8 @@ io.on("connection", (socket: IOSocket) => {
     ack({ ok: true, data: null });
   });
 
-  socket.on("disconnect", () => {
+  socket.on("disconnect", (reason) => {
+    log.debug("socket.disconnect", { sid: socket.id, reason });
     const roomId = socket.data.roomId;
     if (!roomId) return;
     const room = rooms.get(roomId);
@@ -722,15 +827,32 @@ io.on("connection", (socket: IOSocket) => {
     const player = findPlayer(room, socket.data.playerId);
     if (room.phase === "lobby") {
       removePlayer(room, socket.data.playerId);
+      log.info("player.left", {
+        roomId,
+        playerId: shortId(socket.data.playerId),
+        phase: "lobby",
+        reason,
+      });
     } else if (player) {
       player.connected = false;
       player.disconnectedAt = Date.now();
       player.ready = false;
+      log.info("player.offline", {
+        roomId,
+        playerId: shortId(player.id),
+        name: player.name,
+        phase: room.phase,
+        reason,
+      });
     }
 
     markEmptyState(room);
     const connectedCount = room.players.filter((p) => p.connected).length;
     if (room.phase !== "lobby" && connectedCount < 1) {
+      log.warn("room.return_to_lobby", {
+        roomId,
+        cause: "all_disconnected",
+      });
       returnToLobby(room, "Everyone disconnected — back to lobby");
     } else {
       broadcastRoom(room);
@@ -739,6 +861,32 @@ io.on("connection", (socket: IOSocket) => {
 });
 
 server.listen(PORT, () => {
-  // eslint-disable-next-line no-console
-  console.log(`[word-bridge-race] server listening on :${PORT}`);
+  log.info("server.listening", {
+    port: PORT,
+    cors: CORS_ORIGIN,
+    env: process.env.NODE_ENV ?? "dev",
+    nodeVersion: process.version,
+  });
+});
+
+setInterval(() => {
+  let totalPlayers = 0;
+  let connectedPlayers = 0;
+  for (const r of rooms.values()) {
+    totalPlayers += r.players.length;
+    connectedPlayers += r.players.filter((p) => p.connected).length;
+  }
+  log.info("stats", {
+    rooms: rooms.size,
+    totalPlayers,
+    connectedPlayers,
+    uptimeSec: Math.floor(process.uptime()),
+  });
+}, 60_000).unref();
+
+process.on("uncaughtException", (err) => {
+  log.error("uncaughtException", { err: err.message, stack: err.stack });
+});
+process.on("unhandledRejection", (reason) => {
+  log.error("unhandledRejection", { reason: String(reason) });
 });
