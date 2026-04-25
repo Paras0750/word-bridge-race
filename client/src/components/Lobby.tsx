@@ -1,8 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { CheckIcon, CrownIcon, FlameIcon, PlayIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { cn } from "@/lib/utils";
 import { getSocket } from "@/lib/socket";
 import type { PublicRoom } from "@/lib/types";
+import { SettingsPanel } from "./SettingsPanel";
 
 interface Props {
   room: PublicRoom;
@@ -10,23 +23,30 @@ interface Props {
   isHost: boolean;
 }
 
+function initials(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((s) => s[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
 export function Lobby({ room, meId, isHost }: Props) {
-  const [start, setStart] = useState<string>(room.constraints.start);
-  const [end, setEnd] = useState<string>(room.constraints.end);
   const [error, setError] = useState<string>("");
-  const [busy, setBusy] = useState<boolean>(false);
 
-  useEffect(() => {
-    setStart(room.constraints.start);
-    setEnd(room.constraints.end);
-  }, [room.constraints.start, room.constraints.end]);
+  const me = room.players.find((p) => p.id === meId);
+  const allReady =
+    room.players.length >= 2 && room.players.every((p) => p.ready);
+  const readyCount = room.players.filter((p) => p.ready).length;
+  const readyPct = (readyCount / Math.max(1, room.players.length)) * 100;
 
-  const setConstraints = (): void => {
+  const toggleReady = (): void => {
+    if (!me) return;
     setError("");
-    const socket = getSocket();
-    socket.emit(
-      "set_constraints",
-      { roomId: room.id, start: start.trim().toLowerCase(), end: end.trim().toLowerCase() },
+    getSocket().emit(
+      "set_ready",
+      { roomId: room.id, ready: !me.ready },
       (res) => {
         if (!res.ok) setError(res.error);
       },
@@ -35,96 +55,157 @@ export function Lobby({ room, meId, isHost }: Props) {
 
   const startRound = (): void => {
     setError("");
-    setBusy(true);
-    const socket = getSocket();
-    socket.emit("start_round", { roomId: room.id }, (res) => {
-      setBusy(false);
+    getSocket().emit("start_round", { roomId: room.id }, (res) => {
       if (!res.ok) setError(res.error);
     });
   };
 
   return (
-    <div className="grid gap-4 md:grid-cols-[1fr,1fr]">
-      <section className="panel p-5">
-        <h2 className="label">Players · {room.players.length}/10</h2>
-        <ul className="mt-3 space-y-2">
-          {room.players.map((p) => (
-            <li
-              key={p.id}
-              className="flex items-center justify-between rounded-xl border border-line bg-panel2 px-3 py-2.5"
-            >
-              <span className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-success" />
-                <span className="font-medium">{p.name}</span>
-                {p.id === meId && <span className="chip">you</span>}
+    <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
+      <div className="flex flex-col gap-4">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="text-base">Players</CardTitle>
+              <Badge variant="secondary" className="font-mono rounded">
+                {room.players.length}/10
+              </Badge>
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              <div className="bg-muted h-1 flex-1 overflow-hidden rounded-full">
+                <div
+                  className="bg-foreground h-full transition-[width] duration-300"
+                  style={{ width: `${readyPct}%` }}
+                />
+              </div>
+              <span className="text-muted-foreground text-xs font-medium tabular-nums">
+                {readyCount}/{room.players.length} ready
               </span>
-              {p.isHost && <span className="chip text-accent">host</span>}
-            </li>
-          ))}
-        </ul>
-      </section>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <ul className="flex flex-col gap-1.5">
+              {room.players.map((p) => (
+                <li
+                  key={p.id}
+                  className="bg-muted/30 flex items-center gap-3 rounded-md border px-3 py-2.5"
+                >
+                  <div className="bg-muted text-muted-foreground grid size-8 shrink-0 place-items-center rounded-full text-xs font-semibold">
+                    {initials(p.name) || "?"}
+                  </div>
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
+                    <span className="truncate text-sm font-medium">
+                      {p.name}
+                    </span>
+                    {p.id === meId && (
+                      <Badge variant="outline" className="rounded text-[10px]">
+                        you
+                      </Badge>
+                    )}
+                    {p.isHost && (
+                      <CrownIcon className="size-3.5 shrink-0 text-[var(--warning)]" />
+                    )}
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {p.score > 0 && (
+                      <span className="text-muted-foreground font-mono text-xs tabular-nums">
+                        {p.score}pts
+                      </span>
+                    )}
+                    {p.streak >= 2 && (
+                      <Badge
+                        variant="outline"
+                        className="gap-1 border-orange-500/40 rounded text-[10px] text-orange-400"
+                      >
+                        <FlameIcon className="size-3" />
+                        {p.streak}
+                      </Badge>
+                    )}
+                    <span
+                      className={cn(
+                        "size-2 rounded-full",
+                        p.ready
+                          ? "bg-[var(--success)]"
+                          : "bg-muted-foreground/30",
+                      )}
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
 
-      <section className="panel p-5">
-        <h2 className="label">Round constraints</h2>
-        <p className="mt-1 text-xs text-muted">
-          {isHost ? "Set the start and end. They reveal at countdown 0." : "Waiting for the host to set up the round."}
-        </p>
+            {room.roundsPlayed > 0 && (
+              <p className="text-muted-foreground mt-4 text-xs">
+                {room.roundsPlayed} round{room.roundsPlayed === 1 ? "" : "s"}{" "}
+                played · {room.usedWordsCount} word
+                {room.usedWordsCount === 1 ? "" : "s"} used
+              </p>
+            )}
+          </CardContent>
+        </Card>
 
-        <div className="mt-4 grid gap-3">
-          <div>
-            <label className="label">Starts with</label>
-            <input
-              className="input mt-2 font-mono uppercase tracking-widest disabled:opacity-60"
-              value={start}
-              maxLength={10}
-              disabled={!isHost}
-              onChange={(e) => setStart(e.target.value.replace(/[^a-zA-Z]/g, ""))}
-              placeholder="P"
-            />
-          </div>
-          <div>
-            <label className="label">Ends with</label>
-            <input
-              className="input mt-2 font-mono uppercase tracking-widest disabled:opacity-60"
-              value={end}
-              maxLength={10}
-              disabled={!isHost}
-              onChange={(e) => setEnd(e.target.value.replace(/[^a-zA-Z]/g, ""))}
-              placeholder="D"
-            />
-          </div>
-
-          {isHost && (
-            <div className="mt-2 grid gap-2">
-              <button className="btn-ghost" onClick={setConstraints} disabled={!start || !end}>
-                Save constraints
-              </button>
-              <button
-                className="btn-primary h-12"
-                onClick={startRound}
-                disabled={busy || !room.constraints.start || !room.constraints.end}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Get ready to race</CardTitle>
+            <CardDescription>
+              Two random players pick a start and end letter. First valid real
+              word wins +10. Streak of 3 = +5 bonus.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col gap-3">
+              <Button
+                size="lg"
+                variant={me?.ready ? "outline" : "default"}
+                className={cn(
+                  "h-11 w-full text-sm font-medium",
+                  me?.ready &&
+                    "border-[var(--success)]/40 bg-[var(--success)]/10 text-[var(--success)] hover:bg-[var(--success)]/15",
+                )}
+                onClick={toggleReady}
+                disabled={!me}
               >
-                Start round
-              </button>
-            </div>
-          )}
+                {me?.ready ? (
+                  <>
+                    <CheckIcon data-icon="inline-start" />
+                    You're ready · tap to undo
+                  </>
+                ) : (
+                  "I'm ready"
+                )}
+              </Button>
 
-          {error && (
-            <div className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
-              {error}
-            </div>
-          )}
+              {isHost ? (
+                <Button
+                  size="lg"
+                  className="h-11 w-full text-sm font-medium"
+                  onClick={startRound}
+                  disabled={!allReady}
+                >
+                  <PlayIcon data-icon="inline-start" />
+                  {allReady
+                    ? "Start round"
+                    : room.players.length < 2
+                      ? "Need at least 2 players"
+                      : `Waiting for ${room.players.length - readyCount} player${room.players.length - readyCount === 1 ? "" : "s"}`}
+                </Button>
+              ) : (
+                <p className="text-muted-foreground rounded-md border border-dashed border-white/10 px-3 py-2.5 text-center text-xs">
+                  Waiting for the host to start…
+                </p>
+              )}
 
-          {!isHost && (room.constraints.start || room.constraints.end) && (
-            <div className="mt-2 text-xs text-muted">
-              Host has{" "}
-              {room.constraints.start && room.constraints.end
-                ? "set the constraints. Locked in."
-                : "started setting up…"}
+              {error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
             </div>
-          )}
-        </div>
-      </section>
+          </CardContent>
+        </Card>
+      </div>
+
+      <SettingsPanel room={room} isHost={isHost} />
     </div>
   );
 }

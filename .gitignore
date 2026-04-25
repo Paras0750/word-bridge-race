@@ -8,3 +8,4 @@ dist
 npm-debug.log
 yarn-error.log
 .bun
+.claude

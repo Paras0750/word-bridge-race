@@ -4,15 +4,20 @@ import express from "express";
 import cors from "cors";
 import { Server, type Socket } from "socket.io";
 import {
+  PICKABLE_LETTERS,
+  clampSettings,
+  clearAllTimers,
   createRoom,
   findPlayer,
   generateRoomId,
+  pickRandomLetter,
   removePlayer,
-  sanitizeConstraint,
   sanitizeName,
+  selectPickers,
   toPublicRoom,
 } from "./rooms";
 import { validateWord } from "./validate";
+import { dictionarySize, loadDictionary } from "./dictionary";
 import type {
   ClientToServerEvents,
   InterServerEvents,
@@ -25,44 +30,55 @@ import type {
 
 const PORT = Number(process.env.PORT ?? 3001);
 const CORS_ORIGIN = process.env.CORS_ORIGIN ?? "*";
-const COUNTDOWN_SECONDS = 3;
 const ROOM_IDLE_MS = 1000 * 60 * 30;
 const ROOM_EMPTY_GRACE_MS = 1000 * 60;
 const MAX_PLAYERS = 10;
+const WIN_POINTS = 10;
+const STREAK_BONUS_AT = 3;
+const STREAK_BONUS_POINTS = 5;
+
+loadDictionary();
+// eslint-disable-next-line no-console
+console.log(`[word-bridge-race] dictionary loaded: ${dictionarySize()} words`);
 
 const app = express();
 app.use(cors({ origin: CORS_ORIGIN }));
 app.get("/healthz", (_req, res) => {
-  res.json({ ok: true, rooms: rooms.size, ts: Date.now() });
+  res.json({
+    ok: true,
+    rooms: rooms.size,
+    words: dictionarySize(),
+    ts: Date.now(),
+  });
 });
 
 const server = http.createServer(app);
-const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>(
-  server,
-  {
-    cors: { origin: CORS_ORIGIN, methods: ["GET", "POST"] },
-    pingInterval: 20000,
-    pingTimeout: 25000,
-  },
-);
+const io = new Server<
+  ClientToServerEvents,
+  ServerToClientEvents,
+  InterServerEvents,
+  SocketData
+>(server, {
+  cors: { origin: CORS_ORIGIN, methods: ["GET", "POST"] },
+  pingInterval: 20000,
+  pingTimeout: 25000,
+});
 
 const rooms = new Map<RoomId, Room>();
 
-type IOSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
+type IOSocket = Socket<
+  ClientToServerEvents,
+  ServerToClientEvents,
+  InterServerEvents,
+  SocketData
+>;
 
 function broadcastRoom(room: Room): void {
   io.to(room.id).emit("room_update", toPublicRoom(room));
 }
 
-function clearCountdown(room: Room): void {
-  if (room.countdownTimer) {
-    clearInterval(room.countdownTimer);
-    room.countdownTimer = null;
-  }
-}
-
 function destroyRoom(room: Room): void {
-  clearCountdown(room);
+  clearAllTimers(room);
   rooms.delete(room.id);
 }
 
@@ -73,15 +89,180 @@ function markEmptyState(room: Room): void {
 setInterval(() => {
   const now = Date.now();
   for (const room of rooms.values()) {
-    if (room.emptySinceMs !== null && now - room.emptySinceMs > ROOM_EMPTY_GRACE_MS) {
+    if (
+      room.emptySinceMs !== null &&
+      now - room.emptySinceMs > ROOM_EMPTY_GRACE_MS
+    ) {
       destroyRoom(room);
       continue;
     }
-    if (now - room.createdAt > ROOM_IDLE_MS && room.phase === "lobby" && room.players.length === 0) {
+    if (
+      now - room.createdAt > ROOM_IDLE_MS &&
+      room.phase === "lobby" &&
+      room.players.length === 0
+    ) {
       destroyRoom(room);
     }
   }
 }, 30_000).unref();
+
+function beginPickPhase(room: Room): void {
+  if (room.players.length < 2) {
+    returnToLobby(room, "Need at least 2 players");
+    return;
+  }
+
+  const pickers = selectPickers(room);
+  const now = Date.now();
+  const deadline = now + room.settings.pickTimeoutSeconds * 1000;
+
+  room.phase = "pick_start";
+  room.round = {
+    index: room.roundsPlayed + 1,
+    pickers: {
+      start: {
+        playerId: pickers.start.id,
+        name: pickers.start.name,
+        deadlineMs: deadline,
+      },
+      end: { playerId: pickers.end.id, name: pickers.end.name, deadlineMs: 0 },
+    },
+    start: "",
+    end: "",
+    startedAt: null,
+    endsAt: null,
+    winner: null,
+    timedOut: false,
+  };
+
+  schedulePickTimeout(room, "start");
+  broadcastRoom(room);
+}
+
+function schedulePickTimeout(room: Room, slot: "start" | "end"): void {
+  if (room.pickTimer) clearTimeout(room.pickTimer);
+  room.pickTimer = setTimeout(
+    () => {
+      if (!room.round) return;
+      const letter = pickRandomLetter();
+      applyPick(room, slot, letter, true);
+    },
+    room.settings.pickTimeoutSeconds * 1000,
+  );
+}
+
+function applyPick(
+  room: Room,
+  slot: "start" | "end",
+  letter: string,
+  fromTimeout: boolean,
+): void {
+  if (!room.round) return;
+  const normalized = letter.trim().toLowerCase();
+  if (!PICKABLE_LETTERS.includes(normalized)) return;
+
+  if (room.pickTimer) {
+    clearTimeout(room.pickTimer);
+    room.pickTimer = null;
+  }
+
+  if (slot === "start") {
+    room.round.start = normalized;
+    room.phase = "pick_end";
+    if (room.round.pickers.end) {
+      room.round.pickers.end.deadlineMs =
+        Date.now() + room.settings.pickTimeoutSeconds * 1000;
+    }
+    schedulePickTimeout(room, "end");
+    broadcastRoom(room);
+    return;
+  }
+
+  room.round.end = normalized;
+  beginCountdown(room);
+  if (fromTimeout) broadcastRoom(room);
+}
+
+function beginCountdown(room: Room): void {
+  if (!room.round) return;
+  room.phase = "countdown";
+  broadcastRoom(room);
+
+  let n = room.settings.countdownSeconds;
+  io.to(room.id).emit("countdown", n);
+  if (room.countdownTimer) clearInterval(room.countdownTimer);
+  room.countdownTimer = setInterval(() => {
+    n -= 1;
+    if (n > 0) {
+      io.to(room.id).emit("countdown", n);
+      return;
+    }
+    if (room.countdownTimer) {
+      clearInterval(room.countdownTimer);
+      room.countdownTimer = null;
+    }
+    if (!room.round) return;
+    room.phase = "active";
+    const now = Date.now();
+    room.round.startedAt = now;
+    room.round.endsAt = now + room.settings.roundMaxSeconds * 1000;
+    io.to(room.id).emit("countdown", 0);
+    io.to(room.id).emit("reveal_constraints", {
+      start: room.round.start,
+      end: room.round.end,
+      startedAt: room.round.startedAt,
+      endsAt: room.round.endsAt,
+    });
+    io.to(room.id).emit("round_active");
+    broadcastRoom(room);
+
+    if (room.roundTimer) clearTimeout(room.roundTimer);
+    room.roundTimer = setTimeout(
+      () => {
+        room.roundTimer = null;
+        if (!room.round || room.round.winner) return;
+        room.round.timedOut = true;
+        for (const p of room.players) p.streak = 0;
+        io.to(room.id).emit("round_timeout", { roundIndex: room.round.index });
+        finishRound(room);
+      },
+      room.settings.roundMaxSeconds * 1000,
+    );
+  }, 1000);
+}
+
+function finishRound(room: Room): void {
+  if (room.roundTimer) {
+    clearTimeout(room.roundTimer);
+    room.roundTimer = null;
+  }
+  room.phase = "scoreboard";
+  room.roundsPlayed += 1;
+  if (room.scoreboardTimer) clearTimeout(room.scoreboardTimer);
+  broadcastRoom(room);
+
+  room.scoreboardTimer = setTimeout(
+    () => {
+      room.scoreboardTimer = null;
+      if (!rooms.has(room.id)) return;
+      if (room.players.length < 2) {
+        returnToLobby(room);
+        return;
+      }
+      beginPickPhase(room);
+    },
+    room.settings.scoreboardSeconds * 1000,
+  );
+}
+
+function returnToLobby(room: Room, errorMsg?: string): void {
+  clearAllTimers(room);
+  room.phase = "lobby";
+  room.round = null;
+  for (const p of room.players) p.ready = false;
+  if (errorMsg) io.to(room.id).emit("error_msg", errorMsg);
+  broadcastRoom(room);
+}
 
 io.on("connection", (socket: IOSocket) => {
   socket.data.playerId = randomUUID();
@@ -93,7 +274,15 @@ io.on("connection", (socket: IOSocket) => {
     if (!name) return ack({ ok: false, error: "Name is required" });
 
     const roomId = generateRoomId(new Set(rooms.keys()));
-    const player: Player = { id: socket.data.playerId, name, isHost: true };
+    const player: Player = {
+      id: socket.data.playerId,
+      name,
+      isHost: true,
+      ready: false,
+      score: 0,
+      streak: 0,
+      bestMs: null,
+    };
     const room = createRoom(roomId, player);
     rooms.set(roomId, room);
 
@@ -113,20 +302,35 @@ io.on("connection", (socket: IOSocket) => {
 
     const room = rooms.get(roomId);
     if (!room) return ack({ ok: false, error: "Room not found" });
-    if (room.players.length >= MAX_PLAYERS)
-      return ack({ ok: false, error: "Room is full" });
-    if (room.phase !== "lobby")
-      return ack({ ok: false, error: "Round already in progress" });
 
-    const player: Player = { id: socket.data.playerId, name, isHost: false };
-    room.players.push(player);
-    room.emptySinceMs = null;
+    const existing = findPlayer(room, socket.data.playerId);
+    if (!existing) {
+      if (room.players.length >= MAX_PLAYERS)
+        return ack({ ok: false, error: "Room is full" });
+      if (room.phase !== "lobby")
+        return ack({ ok: false, error: "Round already in progress" });
+
+      const player: Player = {
+        id: socket.data.playerId,
+        name,
+        isHost: false,
+        ready: false,
+        score: 0,
+        streak: 0,
+        bestMs: null,
+      };
+      room.players.push(player);
+      room.emptySinceMs = null;
+    }
 
     socket.data.roomId = roomId;
     socket.data.name = name;
     socket.join(roomId);
 
-    ack({ ok: true, data: { playerId: player.id, room: toPublicRoom(room) } });
+    ack({
+      ok: true,
+      data: { playerId: socket.data.playerId, room: toPublicRoom(room) },
+    });
     broadcastRoom(room);
   });
 
@@ -139,26 +343,40 @@ io.on("connection", (socket: IOSocket) => {
     socket.data.roomId = null;
     markEmptyState(room);
 
+    if (room.phase !== "lobby" && room.players.length < 2) {
+      returnToLobby(room, "A player left, returning to lobby");
+    } else {
+      broadcastRoom(room);
+    }
+
+    ack({ ok: true, data: null });
+  });
+
+  socket.on("set_ready", (payload, ack) => {
+    const room = rooms.get(payload.roomId);
+    if (!room) return ack({ ok: false, error: "Room not found" });
+    if (room.phase !== "lobby")
+      return ack({ ok: false, error: "Can only change ready in lobby" });
+
+    const player = findPlayer(room, socket.data.playerId);
+    if (!player) return ack({ ok: false, error: "Not in this room" });
+
+    player.ready = Boolean(payload.ready);
     ack({ ok: true, data: null });
     broadcastRoom(room);
   });
 
-  socket.on("set_constraints", (payload, ack) => {
+  socket.on("set_settings", (payload, ack) => {
     const room = rooms.get(payload.roomId);
     if (!room) return ack({ ok: false, error: "Room not found" });
     if (room.hostId !== socket.data.playerId)
-      return ack({ ok: false, error: "Only the host can set constraints" });
+      return ack({ ok: false, error: "Only the host can change settings" });
     if (room.phase !== "lobby")
-      return ack({ ok: false, error: "Round already in progress" });
+      return ack({ ok: false, error: "Settings can only change in lobby" });
 
-    const start = sanitizeConstraint(payload.start);
-    const end = sanitizeConstraint(payload.end);
-    if (!start || !end) return ack({ ok: false, error: "Both start and end are required" });
-    if (!/^[a-z]+$/.test(start) || !/^[a-z]+$/.test(end))
-      return ack({ ok: false, error: "Letters only" });
-
-    room.constraints = { start, end };
-    ack({ ok: true, data: null });
+    const next = clampSettings(room.settings, payload.settings ?? {});
+    room.settings = next;
+    ack({ ok: true, data: { settings: next } });
     broadcastRoom(room);
   });
 
@@ -166,72 +384,62 @@ io.on("connection", (socket: IOSocket) => {
     const room = rooms.get(payload.roomId);
     if (!room) return ack({ ok: false, error: "Room not found" });
     if (room.hostId !== socket.data.playerId)
-      return ack({ ok: false, error: "Only the host can start the round" });
+      return ack({ ok: false, error: "Only the host can start" });
     if (room.phase !== "lobby")
       return ack({ ok: false, error: "Round already in progress" });
-    if (!room.constraints.start || !room.constraints.end)
-      return ack({ ok: false, error: "Set the start and end first" });
-    if (room.players.length < 1)
-      return ack({ ok: false, error: "Need at least 1 player" });
-
-    room.phase = "countdown";
-    room.round = {
-      start: room.constraints.start,
-      end: room.constraints.end,
-      startedAt: null,
-      winner: null,
-      attempts: [],
-    };
+    if (room.players.length < 2)
+      return ack({ ok: false, error: "Need at least 2 players" });
+    if (!room.players.every((p) => p.ready))
+      return ack({ ok: false, error: "All players must be ready" });
 
     ack({ ok: true, data: null });
-    broadcastRoom(room);
+    beginPickPhase(room);
+  });
 
-    let n = COUNTDOWN_SECONDS;
-    io.to(room.id).emit("countdown", n);
-    clearCountdown(room);
-    room.countdownTimer = setInterval(() => {
-      n -= 1;
-      if (n > 0) {
-        io.to(room.id).emit("countdown", n);
-        return;
-      }
-      clearCountdown(room);
-      if (!room.round) return;
-      room.phase = "active";
-      room.round.startedAt = Date.now();
-      io.to(room.id).emit("countdown", 0);
-      io.to(room.id).emit("reveal_constraints", {
-        start: room.round.start,
-        end: room.round.end,
-        startedAt: room.round.startedAt,
-      });
-      io.to(room.id).emit("round_active");
-      broadcastRoom(room);
-    }, 1000);
+  socket.on("pick_letter", (payload, ack) => {
+    const room = rooms.get(payload.roomId);
+    if (!room || !room.round)
+      return ack({ ok: false, error: "Room not found" });
+
+    const slot = payload.slot;
+    if (slot !== "start" && slot !== "end")
+      return ack({ ok: false, error: "Invalid slot" });
+
+    if (slot === "start" && room.phase !== "pick_start")
+      return ack({ ok: false, error: "Not the pick-start phase" });
+    if (slot === "end" && room.phase !== "pick_end")
+      return ack({ ok: false, error: "Not the pick-end phase" });
+
+    const expectedPicker =
+      slot === "start" ? room.round.pickers.start : room.round.pickers.end;
+    if (!expectedPicker || expectedPicker.playerId !== socket.data.playerId)
+      return ack({ ok: false, error: "It's not your turn to pick" });
+
+    const letter = (payload.letter ?? "").trim().toLowerCase();
+    if (!PICKABLE_LETTERS.includes(letter))
+      return ack({ ok: false, error: "Pick a valid letter" });
+
+    ack({ ok: true, data: null });
+    applyPick(room, slot, letter, false);
   });
 
   socket.on("submit_word", (payload, ack) => {
     const room = rooms.get(payload.roomId);
     if (!room) return ack({ ok: false, error: "Room not found" });
-    if (!findPlayer(room, socket.data.playerId))
-      return ack({ ok: false, error: "Not in this room" });
+    const player = findPlayer(room, socket.data.playerId);
+    if (!player) return ack({ ok: false, error: "Not in this room" });
     if (room.phase !== "active" || !room.round)
       return ack({ ok: false, error: "Round is not active" });
-    if (room.round.winner) return ack({ ok: false, error: "Round already won" });
+    if (room.round.winner)
+      return ack({ ok: false, error: "Round already won" });
 
     const rawWord = (payload.word ?? "").trim().toLowerCase();
-    const result = validateWord(rawWord, room.round.start, room.round.end);
-
-    const player = findPlayer(room, socket.data.playerId);
-    if (!player) return ack({ ok: false, error: "Player not found" });
-
-    room.round.attempts.push({
-      playerId: player.id,
-      name: player.name,
-      word: rawWord,
-      valid: result.valid,
-      at: Date.now(),
-    });
+    const result = validateWord(
+      rawWord,
+      room.round.start,
+      room.round.end,
+      room.usedWords,
+    );
 
     if (!result.valid) {
       io.to(room.id).emit("invalid_attempt", {
@@ -240,31 +448,55 @@ io.on("connection", (socket: IOSocket) => {
         word: rawWord,
         reason: result.reason ?? "invalid",
       });
-      return ack({ ok: true, data: { accepted: false, reason: result.reason ?? "invalid" } });
+      return ack({
+        ok: true,
+        data: { accepted: false, reason: result.reason ?? "invalid" },
+      });
     }
 
     const tookMs = Date.now() - (room.round.startedAt ?? Date.now());
-    room.round.winner = { playerId: player.id, name: player.name, word: rawWord, tookMs };
-    room.phase = "finished";
+    player.streak += 1;
+    const bonus = player.streak >= STREAK_BONUS_AT ? STREAK_BONUS_POINTS : 0;
+    player.score += WIN_POINTS + bonus;
+    if (player.bestMs === null || tookMs < player.bestMs)
+      player.bestMs = tookMs;
 
-    io.to(room.id).emit("winner", room.round.winner);
-    broadcastRoom(room);
+    for (const other of room.players) {
+      if (other.id !== player.id) other.streak = 0;
+    }
+
+    const winnerData = {
+      playerId: player.id,
+      name: player.name,
+      word: rawWord,
+      tookMs,
+      streak: player.streak,
+      bonus,
+    };
+    room.round.winner = winnerData;
+    room.usedWords.add(rawWord);
+
+    io.to(room.id).emit("winner", winnerData);
     ack({ ok: true, data: { accepted: true } });
+    finishRound(room);
   });
 
-  socket.on("reset_round", (payload, ack) => {
+  socket.on("end_game", (payload, ack) => {
     const room = rooms.get(payload.roomId);
     if (!room) return ack({ ok: false, error: "Room not found" });
     if (room.hostId !== socket.data.playerId)
-      return ack({ ok: false, error: "Only the host can reset" });
+      return ack({ ok: false, error: "Only the host can end the game" });
 
-    clearCountdown(room);
-    room.phase = "lobby";
-    room.round = null;
-    room.constraints = { start: "", end: "" };
-
+    for (const p of room.players) {
+      p.score = 0;
+      p.streak = 0;
+      p.bestMs = null;
+    }
+    room.usedWords.clear();
+    room.recentPickers = [];
+    room.roundsPlayed = 0;
+    returnToLobby(room);
     ack({ ok: true, data: null });
-    broadcastRoom(room);
   });
 
   socket.on("disconnect", () => {
@@ -274,12 +506,11 @@ io.on("connection", (socket: IOSocket) => {
     if (!room) return;
     removePlayer(room, socket.data.playerId);
     markEmptyState(room);
-    if (room.phase === "countdown") {
-      clearCountdown(room);
-      room.phase = "lobby";
-      room.round = null;
+    if (room.phase !== "lobby" && room.players.length < 2) {
+      returnToLobby(room, "A player disconnected, returning to lobby");
+    } else {
+      broadcastRoom(room);
     }
-    broadcastRoom(room);
   });
 });
 
