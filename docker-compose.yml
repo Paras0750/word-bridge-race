@@ -1,0 +1,25 @@
+services:
+  server:
+    build:
+      context: ./server
+    container_name: wbr-server
+    environment:
+      PORT: "3001"
+      CORS_ORIGIN: "http://localhost:3000"
+    ports:
+      - "3001:3001"
+    restart: unless-stopped
+
+  client:
+    build:
+      context: ./client
+      args:
+        NEXT_PUBLIC_SERVER_URL: "http://localhost:3001"
+    container_name: wbr-client
+    environment:
+      NEXT_PUBLIC_SERVER_URL: "http://localhost:3001"
+    depends_on:
+      - server
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
