@@ -62,6 +62,9 @@ export interface Round {
   endsAt: number | null;
   winner: RoundWinner | null;
   timedOut: boolean;
+  skipped: boolean;
+  possibleWordCount: number;
+  cheaters: Set<PlayerId>;
 }
 
 export interface Room {
@@ -91,6 +94,8 @@ export interface PublicRound {
   endsAt: number | null;
   winner: RoundWinner | null;
   timedOut: boolean;
+  skipped: boolean;
+  possibleWordCount: number;
 }
 
 export interface PublicRoom {
@@ -128,8 +133,12 @@ export interface ClientToServerEvents {
     ack: (res: AckResult<null>) => void,
   ) => void;
   submit_word: (
-    payload: { roomId: RoomId; word: string },
+    payload: { roomId: RoomId; word: string; pasted?: boolean },
     ack: (res: AckResult<{ accepted: boolean; reason?: string }>) => void,
+  ) => void;
+  peeked: (
+    payload: { roomId: RoomId; kind: "tab" | "mouse" },
+    ack: (res: AckResult<null>) => void,
   ) => void;
   end_game: (payload: { roomId: RoomId }, ack: (res: AckResult<null>) => void) => void;
 }
@@ -147,6 +156,25 @@ export interface ServerToClientEvents {
   invalid_attempt: (data: { playerId: PlayerId; name: string; word: string; reason: string }) => void;
   winner: (data: RoundWinner) => void;
   round_timeout: (data: { roundIndex: number }) => void;
+  round_skipped: (data: {
+    roundIndex: number;
+    start: string;
+    end: string;
+    reason: "no_words";
+  }) => void;
+  cheater_caught: (data: {
+    playerId: PlayerId;
+    name: string;
+    word: string;
+    penalty: number;
+    scoreAfter: number;
+  }) => void;
+  peek_announce: (data: {
+    playerId: PlayerId;
+    name: string;
+    message: string;
+    kind: "tab" | "mouse";
+  }) => void;
   error_msg: (msg: string) => void;
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CrownIcon, FlameIcon, TimerOffIcon, TrophyIcon } from "lucide-react";
+import { BanIcon, CrownIcon, FlameIcon, TimerOffIcon, TrophyIcon } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -25,6 +25,7 @@ interface Props {
 
 export function Scoreboard({ room, attempts, meId, isHost }: Props) {
   const winner = room.round?.winner ?? null;
+  const skipped = room.round?.skipped ?? false;
   const sorted = [...room.players].sort((a, b) => b.score - a.score);
   const top = sorted[0]?.score ?? 0;
 
@@ -66,6 +67,19 @@ export function Scoreboard({ room, attempts, meId, isHost }: Props) {
                   </div>
                 )}
               </>
+            ) : skipped ? (
+              <>
+                <Badge
+                  variant="outline"
+                  className="gap-1.5 rounded border-[var(--warning)]/40 text-[var(--warning)]"
+                >
+                  <BanIcon className="size-3.5" />
+                  Round skipped
+                </Badge>
+                <CardTitle className="mt-3 text-2xl sm:text-3xl">
+                  No words bridge these letters
+                </CardTitle>
+              </>
             ) : (
               <>
                 <Badge
@@ -102,7 +116,9 @@ export function Scoreboard({ room, attempts, meId, isHost }: Props) {
                 <span className="text-foreground font-mono uppercase">
                   {room.round?.end}
                 </span>{" "}
-                stumped everyone.
+                {skipped
+                  ? "— zero matches in the dictionary."
+                  : "stumped everyone."}
               </p>
             )}
 

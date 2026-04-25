@@ -90,6 +90,8 @@ export function toPublicRoom(room: Room): PublicRoom {
         endsAt: room.round.endsAt,
         winner: room.round.winner,
         timedOut: room.round.timedOut,
+        skipped: room.round.skipped,
+        possibleWordCount: room.round.possibleWordCount,
       }
     : null;
 

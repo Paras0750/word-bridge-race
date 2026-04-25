@@ -19,7 +19,7 @@ import {
   validateRoomCode,
 } from "./rooms";
 import { validateWord } from "./validate";
-import { dictionarySize, loadDictionary } from "./dictionary";
+import { countMatching, dictionarySize, loadDictionary } from "./dictionary";
 import type {
   ClientToServerEvents,
   InterServerEvents,
@@ -38,6 +38,30 @@ const MAX_PLAYERS = 10;
 const WIN_POINTS = 10;
 const STREAK_BONUS_AT = 3;
 const STREAK_BONUS_POINTS = 5;
+const PASTE_PENALTY = 5;
+const PEEK_THROTTLE_MS = 4_000;
+const SKIP_GRACE_MS = 4_000;
+
+const PEEK_MESSAGES_TAB: readonly string[] = [
+  "👀 welcome back, {name}",
+  "🤫 caught you peeking, {name}",
+  "📖 {name} just consulted the oracle",
+  "🌐 wikipedia called, {name}",
+  "🔍 {name} returns from a research trip",
+  "👁️ no notes, {name}",
+];
+const PEEK_MESSAGES_MOUSE: readonly string[] = [
+  "🐭 {name}'s cursor escaped the chat",
+  "👋 {name}'s mouse went on vacation",
+  "🚪 {name} stepped outside for a sec",
+];
+
+function pickPeekMessage(name: string, kind: "tab" | "mouse"): string {
+  const pool = kind === "tab" ? PEEK_MESSAGES_TAB : PEEK_MESSAGES_MOUSE;
+  const idx = Math.floor(Math.random() * pool.length);
+  const template = pool[idx] ?? pool[0] ?? "👀 welcome back, {name}";
+  return template.replace("{name}", name);
+}
 
 loadDictionary();
 // eslint-disable-next-line no-console
@@ -135,6 +159,9 @@ function beginPickPhase(room: Room): void {
     endsAt: null,
     winner: null,
     timedOut: false,
+    skipped: false,
+    possibleWordCount: 0,
+    cheaters: new Set<string>(),
   };
 
   schedulePickTimeout(room, "start");
@@ -181,6 +208,34 @@ function applyPick(
   }
 
   room.round.end = normalized;
+
+  const possible = countMatching(room.round.start, room.round.end);
+  room.round.possibleWordCount = possible;
+
+  if (possible === 0) {
+    room.round.skipped = true;
+    io.to(room.id).emit("round_skipped", {
+      roundIndex: room.round.index,
+      start: room.round.start,
+      end: room.round.end,
+      reason: "no_words",
+    });
+    if (room.scoreboardTimer) clearTimeout(room.scoreboardTimer);
+    room.phase = "scoreboard";
+    room.roundsPlayed += 1;
+    broadcastRoom(room);
+    room.scoreboardTimer = setTimeout(() => {
+      room.scoreboardTimer = null;
+      if (!rooms.has(room.id)) return;
+      if (room.players.length < 2) {
+        returnToLobby(room);
+        return;
+      }
+      beginPickPhase(room);
+    }, SKIP_GRACE_MS);
+    return;
+  }
+
   beginCountdown(room);
   if (fromTimeout) broadcastRoom(room);
 }
@@ -471,6 +526,29 @@ io.on("connection", (socket: IOSocket) => {
       return ack({ ok: false, error: "Round already won" });
 
     const rawWord = (payload.word ?? "").trim().toLowerCase().slice(0, 30);
+    const pasted = payload.pasted === true;
+    const wasFlaggedBefore = room.round.cheaters.has(player.id);
+
+    if (pasted && !wasFlaggedBefore) {
+      room.round.cheaters.add(player.id);
+      const before = player.score;
+      player.score = Math.max(0, before - PASTE_PENALTY);
+      const taken = before - player.score;
+      io.to(room.id).emit("cheater_caught", {
+        playerId: player.id,
+        name: player.name,
+        word: rawWord,
+        penalty: taken,
+        scoreAfter: player.score,
+      });
+      broadcastRoom(room);
+      return ack({ ok: true, data: { accepted: false, reason: "pasted" } });
+    }
+
+    if (wasFlaggedBefore || pasted) {
+      return ack({ ok: true, data: { accepted: false, reason: "pasted" } });
+    }
+
     const result = validateWord(
       rawWord,
       room.round.start,
@@ -516,6 +594,30 @@ io.on("connection", (socket: IOSocket) => {
     io.to(room.id).emit("winner", winnerData);
     ack({ ok: true, data: { accepted: true } });
     finishRound(room);
+  });
+
+  let lastPeekAt = 0;
+  socket.on("peeked", (payload, ack) => {
+    const room = rooms.get(payload.roomId);
+    if (!room) return ack({ ok: false, error: "Room not found" });
+    const player = findPlayer(room, socket.data.playerId);
+    if (!player) return ack({ ok: false, error: "Not in this room" });
+    if (room.phase !== "active") return ack({ ok: true, data: null });
+
+    const kind = payload.kind === "mouse" ? "mouse" : "tab";
+    const now = Date.now();
+    if (now - lastPeekAt < PEEK_THROTTLE_MS) {
+      return ack({ ok: true, data: null });
+    }
+    lastPeekAt = now;
+
+    io.to(room.id).emit("peek_announce", {
+      playerId: player.id,
+      name: player.name,
+      message: pickPeekMessage(player.name, kind),
+      kind,
+    });
+    ack({ ok: true, data: null });
   });
 
   socket.on("end_game", (payload, ack) => {

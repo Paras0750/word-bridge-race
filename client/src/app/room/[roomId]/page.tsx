@@ -49,7 +49,12 @@ export default function RoomPage() {
   const [retrying, setRetrying] = useState<boolean>(false);
   const joinedRef = useRef<boolean>(false);
   const lastRoundRef = useRef<number>(0);
+  const meIdRef = useRef<string>("");
   const { status: socketStatus, lastError: socketError } = useSocketStatus();
+
+  useEffect(() => {
+    meIdRef.current = meId;
+  }, [meId]);
 
   const handleRetry = (): void => {
     setRetrying(true);
@@ -129,6 +134,43 @@ export default function RoomPage() {
     const onRoundTimeout = (): void => {
       toast.warning("Time's up — no one solved it!");
     };
+    const onRoundSkipped = (data: { start: string; end: string }): void => {
+      toast.warning(
+        `No words bridge ${data.start.toUpperCase()} and ${data.end.toUpperCase()} — skipping round.`,
+      );
+    };
+    const onCheaterCaught = (data: {
+      playerId: string;
+      name: string;
+      word: string;
+      penalty: number;
+    }): void => {
+      const id = `${Date.now()}-${Math.random()}`;
+      setAttempts((prev) => [
+        ...prev,
+        {
+          id,
+          playerId: data.playerId,
+          name: data.name,
+          word: data.word,
+          valid: false,
+          reason: "pasted",
+          at: Date.now(),
+        },
+      ]);
+      if (data.playerId === meIdRef.current) {
+        toast.error(`🚨 Caught pasting! −${data.penalty} pts`);
+      } else {
+        toast.error(`🚨 ${data.name} pasted "${data.word}" · −${data.penalty} pts`);
+      }
+    };
+    const onPeekAnnounce = (data: {
+      playerId: string;
+      message: string;
+    }): void => {
+      if (data.playerId === meIdRef.current) return;
+      toast(data.message);
+    };
     const onError = (msg: string): void => {
       toast.error(msg);
     };
@@ -138,6 +180,9 @@ export default function RoomPage() {
     socket.on("invalid_attempt", onInvalid);
     socket.on("winner", onWinner);
     socket.on("round_timeout", onRoundTimeout);
+    socket.on("round_skipped", onRoundSkipped);
+    socket.on("cheater_caught", onCheaterCaught);
+    socket.on("peek_announce", onPeekAnnounce);
     socket.on("error_msg", onError);
 
     const tryJoin = (): void => {
@@ -167,6 +212,9 @@ export default function RoomPage() {
       socket.off("invalid_attempt", onInvalid);
       socket.off("winner", onWinner);
       socket.off("round_timeout", onRoundTimeout);
+      socket.off("round_skipped", onRoundSkipped);
+      socket.off("cheater_caught", onCheaterCaught);
+      socket.off("peek_announce", onPeekAnnounce);
       socket.off("error_msg", onError);
       socket.off("connect", onConnect);
     };

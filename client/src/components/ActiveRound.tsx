@@ -27,6 +27,13 @@ export function ActiveRound({ room, meId, attempts }: Props) {
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [elapsedMs, setElapsedMs] = useState<number>(0);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const pastedRef = useRef<boolean>(false);
+  const roundIdxRef = useRef<number>(room.round?.index ?? 0);
+
+  if (roundIdxRef.current !== (room.round?.index ?? 0)) {
+    roundIdxRef.current = room.round?.index ?? 0;
+    pastedRef.current = false;
+  }
 
   const start = room.round?.start ?? "";
   const end = room.round?.end ?? "";
@@ -59,25 +66,58 @@ export function ActiveRound({ room, meId, attempts }: Props) {
     return () => clearInterval(id);
   }, [startedAt]);
 
+  useEffect(() => {
+    let lastEmit = 0;
+    const emitPeek = (kind: "tab" | "mouse"): void => {
+      const now = Date.now();
+      if (now - lastEmit < 4000) return;
+      lastEmit = now;
+      getSocket().emit("peeked", { roomId: room.id, kind }, () => undefined);
+    };
+    const onVisibility = (): void => {
+      if (document.visibilityState === "visible") emitPeek("tab");
+    };
+    const onMouseLeave = (e: MouseEvent): void => {
+      const to = e.relatedTarget as Node | null;
+      if (!to) emitPeek("mouse");
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    document.documentElement.addEventListener("mouseleave", onMouseLeave);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      document.documentElement.removeEventListener("mouseleave", onMouseLeave);
+    };
+  }, [room.id]);
+
   const submit = (): void => {
     const value = word.trim().toLowerCase();
     if (!value) return;
     setSubmitting(true);
-    getSocket().emit("submit_word", { roomId: room.id, word: value }, (res) => {
-      setSubmitting(false);
-      if (!res.ok) {
-        setFeedback({ tone: "bad", text: res.error });
-        return;
-      }
-      if (res.data.accepted) {
-        setFeedback({ tone: "ok", text: "Correct!" });
-        setWord("");
-      } else {
-        setFeedback({ tone: "bad", text: humanizeReason(res.data.reason) });
-        setWord("");
-        setTimeout(() => inputRef.current?.focus(), 0);
-      }
-    });
+    getSocket().emit(
+      "submit_word",
+      { roomId: room.id, word: value, pasted: pastedRef.current },
+      (res) => {
+        setSubmitting(false);
+        if (!res.ok) {
+          setFeedback({ tone: "bad", text: res.error });
+          return;
+        }
+        if (res.data.accepted) {
+          setFeedback({ tone: "ok", text: "Correct!" });
+          setWord("");
+        } else if (res.data.reason === "pasted") {
+          setFeedback({
+            tone: "bad",
+            text: "🚨 Caught pasting. Score docked, can't win this round.",
+          });
+          setWord("");
+        } else {
+          setFeedback({ tone: "bad", text: humanizeReason(res.data.reason) });
+          setWord("");
+          setTimeout(() => inputRef.current?.focus(), 0);
+        }
+      },
+    );
   };
 
   const sortedPlayers = [...room.players].sort((a, b) => {
@@ -115,7 +155,7 @@ export function ActiveRound({ room, meId, attempts }: Props) {
               </span>
             </div>
 
-            <div className="mt-5 flex items-center justify-center gap-3 text-xs">
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs">
               <span className="text-muted-foreground font-mono tabular-nums">
                 {(elapsedMs / 1000).toFixed(2)}s
               </span>
@@ -124,6 +164,14 @@ export function ActiveRound({ room, meId, attempts }: Props) {
                   <span className="text-muted-foreground/40">·</span>
                   <span className="text-muted-foreground font-mono tabular-nums">
                     {Math.ceil(remainingMs / 1000)}s left
+                  </span>
+                </>
+              )}
+              {room.round && room.round.possibleWordCount > 0 && (
+                <>
+                  <span className="text-muted-foreground/40">·</span>
+                  <span className="text-muted-foreground font-mono tabular-nums">
+                    {room.round.possibleWordCount} possible
                   </span>
                 </>
               )}
@@ -158,6 +206,9 @@ export function ActiveRound({ room, meId, attempts }: Props) {
                 onChange={(e) =>
                   setWord(e.target.value.replace(/[^a-zA-Z]/g, "").toLowerCase())
                 }
+                onPaste={() => {
+                  pastedRef.current = true;
+                }}
                 placeholder={`${start}...${end}`}
                 autoFocus
                 maxLength={40}
