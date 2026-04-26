@@ -21,11 +21,19 @@ interface Props {
   attempts: AttemptEntry[];
   meId: string;
   isHost: boolean;
+  revealWords: string[] | null;
 }
 
-export function Scoreboard({ room, attempts, meId, isHost }: Props) {
+export function Scoreboard({
+  room,
+  attempts,
+  meId,
+  isHost,
+  revealWords,
+}: Props) {
   const winner = room.round?.winner ?? null;
   const skipped = room.round?.skipped ?? false;
+  const noWords = room.round?.skipReason === "no_words";
   const sorted = [...room.players].sort((a, b) => b.score - a.score);
   const top = sorted[0]?.score ?? 0;
 
@@ -41,7 +49,7 @@ export function Scoreboard({ room, attempts, meId, isHost }: Props) {
   };
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+    <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 grid gap-4 duration-300 lg:grid-cols-[1.4fr_1fr]">
       <div className="flex flex-col gap-4">
         <Card className="text-center">
           <CardHeader className="items-center">
@@ -77,7 +85,9 @@ export function Scoreboard({ room, attempts, meId, isHost }: Props) {
                   Round skipped
                 </Badge>
                 <CardTitle className="mt-3 text-2xl sm:text-3xl">
-                  No words bridge these letters
+                  {noWords
+                    ? "No words bridge these letters"
+                    : "Players skipped this round"}
                 </CardTitle>
               </>
             ) : (
@@ -108,18 +118,38 @@ export function Scoreboard({ room, attempts, meId, isHost }: Props) {
                 </p>
               </>
             ) : (
-              <p className="text-muted-foreground text-sm">
-                <span className="text-foreground font-mono uppercase">
-                  {room.round?.start}
-                </span>
-                <span className="mx-2">…</span>
-                <span className="text-foreground font-mono uppercase">
-                  {room.round?.end}
-                </span>{" "}
-                {skipped
-                  ? "— zero matches in the dictionary."
-                  : "stumped everyone."}
-              </p>
+              <div className="text-muted-foreground text-sm">
+                <p>
+                  <span className="text-foreground font-mono uppercase">
+                    {room.round?.start}
+                  </span>
+                  <span className="mx-2">…</span>
+                  <span className="text-foreground font-mono uppercase">
+                    {room.round?.end}
+                  </span>{" "}
+                  {noWords
+                    ? "— zero matches in the dictionary."
+                    : skipped
+                      ? "was skipped."
+                      : "stumped everyone."}
+                </p>
+                {revealWords && revealWords.length > 0 && (
+                  <p className="mt-3 text-xs">
+                    Could&apos;ve been:{" "}
+                    {revealWords.map((w, i) => (
+                      <span key={w}>
+                        <span className="text-foreground font-mono">{w}</span>
+                        {i < revealWords.length - 1 && (
+                          <span className="text-muted-foreground/50">
+                            {" "}
+                            ·{" "}
+                          </span>
+                        )}
+                      </span>
+                    ))}
+                  </p>
+                )}
+              </div>
             )}
 
             <div className="mx-auto mt-5 w-full max-w-[200px]">

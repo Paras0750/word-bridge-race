@@ -11,6 +11,7 @@ export interface Player {
   bestMs: number | null;
   connected: boolean;
   disconnectedAt: number | null;
+  spectator: boolean;
 }
 
 export type RoomPhase =
@@ -19,7 +20,9 @@ export type RoomPhase =
   | "pick_end"
   | "countdown"
   | "active"
-  | "scoreboard";
+  | "scoreboard"
+  | "paused"
+  | "game_over";
 
 export interface Constraints {
   start: string;
@@ -31,6 +34,7 @@ export interface RoomSettings {
   pickTimeoutSeconds: number;
   scoreboardSeconds: number;
   roundMaxSeconds: number;
+  maxRounds: number;
 }
 
 export const SETTINGS_BOUNDS = {
@@ -38,6 +42,7 @@ export const SETTINGS_BOUNDS = {
   pickTimeoutSeconds: { min: 5, max: 60, default: 15 },
   scoreboardSeconds: { min: 3, max: 30, default: 10 },
   roundMaxSeconds: { min: 15, max: 300, default: 90 },
+  maxRounds: { min: 5, max: 50, default: 20 },
 } as const;
 
 export interface PickerSlot {
@@ -69,6 +74,23 @@ export interface Round {
   possibleWordCount: number;
   cheaters: Set<PlayerId>;
   skipVotes: Set<PlayerId>;
+  lastInvalid: { word: string; playerId: PlayerId; name: string; at: number } | null;
+}
+
+export interface RoundHistoryEntry {
+  index: number;
+  start: string;
+  end: string;
+  winnerId: PlayerId | null;
+  winnerName: string | null;
+  word: string | null;
+  tookMs: number | null;
+  cheaterIds: PlayerId[];
+  skipped: boolean;
+  skipReason: "no_words" | "voted" | null;
+  timedOut: boolean;
+  possibleWordCount: number;
+  scoresAfter: Array<{ id: PlayerId; score: number }>;
 }
 
 export interface Room {
@@ -87,6 +109,10 @@ export interface Room {
   roundTimer: ReturnType<typeof setTimeout> | null;
   createdAt: number;
   emptySinceMs: number | null;
+  name: string | null;
+  roundHistory: RoundHistoryEntry[];
+  gameStartedAt: number | null;
+  gameEndedAt: number | null;
 }
 
 export interface PublicRound {
@@ -106,6 +132,7 @@ export interface PublicRound {
 
 export interface PublicRoom {
   id: RoomId;
+  name: string | null;
   hostId: PlayerId;
   players: Player[];
   phase: RoomPhase;
@@ -113,6 +140,9 @@ export interface PublicRoom {
   roundsPlayed: number;
   usedWordsCount: number;
   settings: RoomSettings;
+  roundHistory: RoundHistoryEntry[];
+  gameStartedAt: number | null;
+  gameEndedAt: number | null;
 }
 
 export interface ClientToServerEvents {
@@ -143,7 +173,7 @@ export interface ClientToServerEvents {
     ack: (res: AckResult<{ accepted: boolean; reason?: string }>) => void,
   ) => void;
   peeked: (
-    payload: { roomId: RoomId; kind: "tab" | "mouse" },
+    payload: { roomId: RoomId; kind: "tab" | "mouse" | "resize" },
     ack: (res: AckResult<null>) => void,
   ) => void;
   vote_skip: (
@@ -151,6 +181,23 @@ export interface ClientToServerEvents {
     ack: (res: AckResult<{ votes: number; total: number }>) => void,
   ) => void;
   end_game: (payload: { roomId: RoomId }, ack: (res: AckResult<null>) => void) => void;
+  new_game: (payload: { roomId: RoomId }, ack: (res: AckResult<null>) => void) => void;
+  transfer_host: (
+    payload: { roomId: RoomId; toPlayerId: PlayerId },
+    ack: (res: AckResult<null>) => void,
+  ) => void;
+  set_room_name: (
+    payload: { roomId: RoomId; name: string },
+    ack: (res: AckResult<{ name: string | null }>) => void,
+  ) => void;
+  set_spectator: (
+    payload: { roomId: RoomId; spectator: boolean },
+    ack: (res: AckResult<null>) => void,
+  ) => void;
+  resume_game: (
+    payload: { roomId: RoomId },
+    ack: (res: AckResult<null>) => void,
+  ) => void;
 }
 
 export interface ServerToClientEvents {
@@ -164,6 +211,10 @@ export interface ServerToClientEvents {
   }) => void;
   round_active: () => void;
   invalid_attempt: (data: { playerId: PlayerId; name: string; word: string; reason: string }) => void;
+  hivemind: (data: {
+    word: string;
+    names: [string, string];
+  }) => void;
   winner: (data: RoundWinner) => void;
   round_timeout: (data: { roundIndex: number }) => void;
   round_skipped: (data: {
@@ -172,6 +223,16 @@ export interface ServerToClientEvents {
     end: string;
     reason: "no_words" | "voted";
   }) => void;
+  round_words_reveal: (data: {
+    roundIndex: number;
+    words: string[];
+  }) => void;
+  game_over: (data: {
+    rounds: number;
+    history: RoundHistoryEntry[];
+  }) => void;
+  game_paused: (data: { reason: "not_enough_players" }) => void;
+  game_resumed: () => void;
   skip_vote: (data: {
     playerId: PlayerId;
     name: string;
@@ -188,7 +249,7 @@ export interface ServerToClientEvents {
     playerId: PlayerId;
     name: string;
     message: string;
-    kind: "tab" | "mouse";
+    kind: "tab" | "mouse" | "resize";
   }) => void;
   error_msg: (msg: string) => void;
 }

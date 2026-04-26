@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getSocket } from "@/lib/socket";
 import { getOrCreatePlayerId } from "@/lib/identity";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const NAME_KEY = "wbr.name";
 
@@ -89,6 +90,9 @@ export default function HomePage() {
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-5 py-10 sm:max-w-lg sm:py-16">
+      <div className="absolute right-4 top-4">
+        <ThemeToggle />
+      </div>
       <div className="mb-8 sm:mb-10">
         <div className="text-muted-foreground mb-4 inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.2em]">
           <SparklesIcon className="size-3" />
@@ -158,16 +162,25 @@ export default function HomePage() {
         >
           <Input
             value={roomCode}
-            onChange={(e) =>
+            onChange={(e) => {
+              const raw = e.target.value;
+              // Try to extract a 6-char room code from a pasted URL or text
+              const match = raw
+                .toUpperCase()
+                .match(/(?:^|[\/?=&])([A-Z2-9]{6})(?:[^A-Z2-9]|$)/);
+              if (match && match[1]) {
+                setRoomCode(match[1]);
+                return;
+              }
               setRoomCode(
-                e.target.value
+                raw
                   .toUpperCase()
                   .replace(/[^A-Z2-9]/g, "")
                   .slice(0, 6),
-              )
-            }
+              );
+            }}
             placeholder="ROOM CODE"
-            maxLength={6}
+            maxLength={64}
             enterKeyHint="go"
             inputMode="text"
             autoCapitalize="characters"

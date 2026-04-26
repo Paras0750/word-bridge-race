@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { HandIcon, Loader2Icon, SendIcon } from "lucide-react";
+import { sfx } from "@/lib/sound";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,8 @@ interface Props {
 }
 
 export function ActiveRound({ room, meId, attempts }: Props) {
+  const me = room.players.find((p) => p.id === meId);
+  const isSpectator = me?.spectator === true;
   const [word, setWord] = useState<string>("");
   const [feedback, setFeedback] = useState<{ tone: "ok" | "bad"; text: string } | null>(
     null,
@@ -48,6 +51,7 @@ export function ActiveRound({ room, meId, attempts }: Props) {
   }, []);
 
   useEffect(() => {
+    if (isSpectator) return;
     const onKey = (e: KeyboardEvent): void => {
       if (document.activeElement === inputRef.current) return;
       if (e.key.length === 1 && /^[a-zA-Z]$/.test(e.key)) {
@@ -56,7 +60,7 @@ export function ActiveRound({ room, meId, attempts }: Props) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [isSpectator]);
 
   useEffect(() => {
     if (!startedAt) return;
@@ -67,9 +71,33 @@ export function ActiveRound({ room, meId, attempts }: Props) {
   }, [startedAt]);
 
   useEffect(() => {
+    if (!endsAt) return;
+    let firedRush = false;
+    let lastTickSec = -1;
+    const tick = (): void => {
+      const remaining = endsAt - Date.now();
+      const secs = Math.ceil(remaining / 1000);
+      if (!firedRush && remaining <= 10_000 && remaining > 0) {
+        firedRush = true;
+        try {
+          navigator.vibrate?.(40);
+        } catch {
+          // ignore
+        }
+      }
+      if (remaining <= 10_000 && remaining > 0 && secs !== lastTickSec) {
+        lastTickSec = secs;
+        sfx.rush();
+      }
+    };
+    const id = setInterval(tick, 200);
+    return () => clearInterval(id);
+  }, [endsAt]);
+
+  useEffect(() => {
     let lastEmit = 0;
     let wasHidden = false;
-    const emitPeek = (kind: "tab" | "mouse"): void => {
+    const emitPeek = (kind: "tab" | "mouse" | "resize"): void => {
       const now = Date.now();
       if (now - lastEmit < 4000) return;
       lastEmit = now;
@@ -97,15 +125,34 @@ export function ActiveRound({ room, meId, attempts }: Props) {
       const to = e.relatedTarget as Node | null;
       if (!to) emitPeek("mouse");
     };
+    let initialW = window.innerWidth;
+    let initialH = window.innerHeight;
+    let resizeTimer: ReturnType<typeof setTimeout> | null = null;
+    const onResize = (): void => {
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        const dw = Math.abs(window.innerWidth - initialW);
+        const dh = Math.abs(window.innerHeight - initialH);
+        if (dw > 80 || dh > 80) {
+          emitPeek("resize");
+          initialW = window.innerWidth;
+          initialH = window.innerHeight;
+        }
+      }, 600);
+    };
+
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("pageshow", onPageShow);
     window.addEventListener("blur", onWindowBlur);
+    window.addEventListener("resize", onResize);
     document.documentElement.addEventListener("mouseleave", onMouseLeave);
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pageshow", onPageShow);
       window.removeEventListener("blur", onWindowBlur);
+      window.removeEventListener("resize", onResize);
       document.documentElement.removeEventListener("mouseleave", onMouseLeave);
+      if (resizeTimer) clearTimeout(resizeTimer);
     };
   }, [room.id]);
 
@@ -151,9 +198,10 @@ export function ActiveRound({ room, meId, attempts }: Props) {
       : remainingPct > 15
         ? "bg-[var(--warning)]"
         : "bg-destructive";
+  const isRush = remainingMs > 0 && remainingMs <= 10_000;
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
+    <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 grid gap-4 duration-300 lg:grid-cols-[1.5fr_1fr]">
       <div className="flex flex-col gap-4">
         <Card>
           <CardHeader className="text-center">
@@ -161,7 +209,7 @@ export function ActiveRound({ room, meId, attempts }: Props) {
               variant="outline"
               className="mx-auto w-fit rounded text-[10px] uppercase tracking-[0.2em]"
             >
-              Round {room.round?.index} · bridge it
+              Round {room.round?.index} of {room.settings.maxRounds} · bridge it
             </Badge>
             <div className="mt-3 flex items-center justify-center gap-3 sm:gap-4">
               <span className="bg-muted text-foreground grid size-16 place-items-center rounded-md border font-mono text-3xl font-semibold uppercase sm:size-20 sm:text-5xl">
@@ -197,7 +245,12 @@ export function ActiveRound({ room, meId, attempts }: Props) {
               )}
             </div>
             {endsAt && (
-              <div className="bg-muted mt-2 h-1 w-full overflow-hidden rounded-full">
+              <div
+                className={cn(
+                  "bg-muted mt-2 h-1 w-full overflow-hidden rounded-full",
+                  isRush && "motion-safe:animate-pulse",
+                )}
+              >
                 <div
                   className={cn(
                     "h-full transition-[width] duration-100 ease-linear",
@@ -210,6 +263,15 @@ export function ActiveRound({ room, meId, attempts }: Props) {
           </CardHeader>
         </Card>
 
+        {isSpectator ? (
+          <Card>
+            <CardContent className="pt-5 text-center">
+              <p className="text-muted-foreground text-sm">
+                You're watching. The pen is for the players.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
         <Card>
           <CardContent className="pt-5">
             <form
@@ -300,41 +362,67 @@ export function ActiveRound({ room, meId, attempts }: Props) {
             <SkipVoteRow room={room} meId={meId} />
           </CardContent>
         </Card>
+        )}
 
-        <Card>
-          <CardContent className="pt-5">
-            <p className="text-muted-foreground mb-2 text-[10px] uppercase tracking-[0.2em]">
-              Players
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {sortedPlayers.map((p) => {
-                const isMe = p.id === meId;
-                return (
-                  <Badge
-                    key={p.id}
-                    variant="outline"
-                    className={cn(
-                      "gap-1.5 rounded font-normal",
-                      isMe && "border-foreground/40 bg-foreground/5",
-                    )}
-                  >
-                    <span className="size-1.5 rounded-full bg-[var(--success)]" />
-                    <span className={cn(isMe && "font-medium")}>
-                      {p.name}
-                      {isMe && <span className="text-muted-foreground"> (you)</span>}
-                    </span>
-                    <span className="text-muted-foreground font-mono tabular-nums">
-                      · {p.score}
-                    </span>
-                  </Badge>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
+        <LeaderboardStrip players={sortedPlayers} meId={meId} />
       </div>
 
       <AttemptsLog attempts={attempts} meId={meId} emptyHint="Be the first to guess!" />
+    </div>
+  );
+}
+
+function LeaderboardStrip({
+  players,
+  meId,
+}: {
+  players: PublicRoom["players"];
+  meId: string;
+}) {
+  const top = players.slice(0, 4);
+  const overflow = players.length - top.length;
+  return (
+    <div className="bg-card/60 supports-[backdrop-filter]:bg-card/40 sticky top-0 z-20 -mx-4 flex flex-wrap items-center gap-1 overflow-x-auto rounded-md border px-3 py-2 backdrop-blur sm:mx-0">
+      <span className="text-muted-foreground shrink-0 text-[10px] uppercase tracking-[0.2em]">
+        Top
+      </span>
+      {top.map((p, idx) => {
+        const isMe = p.id === meId;
+        return (
+          <span
+            key={p.id}
+            className={cn(
+              "inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-xs",
+              isMe
+                ? "border-foreground/40 bg-foreground/5 font-medium"
+                : "bg-muted/40",
+              !p.connected && "opacity-50",
+            )}
+            title={`${p.name} · ${p.score} pts`}
+          >
+            <span
+              className={cn(
+                "text-muted-foreground font-mono text-[10px]",
+                idx === 0 && "text-[var(--warning)]",
+              )}
+            >
+              {idx + 1}
+            </span>
+            <span className="max-w-[6ch] truncate sm:max-w-[10ch]">
+              {p.name}
+              {isMe && <span className="text-muted-foreground"> (you)</span>}
+            </span>
+            <span className="text-muted-foreground font-mono tabular-nums">
+              {p.score}
+            </span>
+          </span>
+        );
+      })}
+      {overflow > 0 && (
+        <span className="text-muted-foreground shrink-0 text-[10px]">
+          +{overflow} more
+        </span>
+      )}
     </div>
   );
 }
@@ -396,6 +484,8 @@ function humanizeReason(reason?: string): string {
       return "Type something.";
     case "not_a_word":
       return "Not in the dictionary.";
+    case "almost":
+      return "So close. Check your spelling.";
     case "already_used":
       return "Already used this room.";
     default:

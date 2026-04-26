@@ -29,6 +29,7 @@ const PRESETS: Array<{
       countdownSeconds: 3,
       roundMaxSeconds: 30,
       scoreboardSeconds: 5,
+      maxRounds: 10,
     },
   },
   {
@@ -40,6 +41,7 @@ const PRESETS: Array<{
       countdownSeconds: 5,
       roundMaxSeconds: 90,
       scoreboardSeconds: 10,
+      maxRounds: 20,
     },
   },
   {
@@ -51,6 +53,7 @@ const PRESETS: Array<{
       countdownSeconds: 5,
       roundMaxSeconds: 180,
       scoreboardSeconds: 15,
+      maxRounds: 20,
     },
   },
 ];
@@ -60,11 +63,13 @@ const FIELDS: Array<{
   label: string;
   desc: string;
   step: number;
+  unit: string;
 }> = [
-  { key: "pickTimeoutSeconds", label: "Pick time", desc: "per picker", step: 1 },
-  { key: "countdownSeconds", label: "Countdown", desc: "before round", step: 1 },
-  { key: "roundMaxSeconds", label: "Round limit", desc: "auto-end", step: 15 },
-  { key: "scoreboardSeconds", label: "Pause", desc: "between rounds", step: 1 },
+  { key: "maxRounds", label: "Game length", desc: "rounds total", step: 1, unit: "" },
+  { key: "pickTimeoutSeconds", label: "Pick time", desc: "per picker", step: 1, unit: "s" },
+  { key: "countdownSeconds", label: "Countdown", desc: "before round", step: 1, unit: "s" },
+  { key: "roundMaxSeconds", label: "Round limit", desc: "auto-end", step: 15, unit: "s" },
+  { key: "scoreboardSeconds", label: "Pause", desc: "between rounds", step: 1, unit: "s" },
 ];
 
 function settingsMatch(a: RoomSettings, b: RoomSettings): boolean {
@@ -199,7 +204,11 @@ export function SettingsPanel({ room, isHost }: Props) {
                     </Button>
                     <span className="w-12 text-center font-mono text-sm font-semibold tabular-nums">
                       {value}
-                      <span className="text-muted-foreground ml-0.5 text-[10px]">s</span>
+                      {f.unit && (
+                        <span className="text-muted-foreground ml-0.5 text-[10px]">
+                          {f.unit}
+                        </span>
+                      )}
                     </span>
                     <Button
                       variant="outline"

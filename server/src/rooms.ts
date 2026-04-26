@@ -14,6 +14,7 @@ export function defaultSettings(): RoomSettings {
     pickTimeoutSeconds: SETTINGS_BOUNDS.pickTimeoutSeconds.default,
     scoreboardSeconds: SETTINGS_BOUNDS.scoreboardSeconds.default,
     roundMaxSeconds: SETTINGS_BOUNDS.roundMaxSeconds.default,
+    maxRounds: SETTINGS_BOUNDS.maxRounds.default,
   };
 }
 
@@ -35,7 +36,9 @@ export function clampSettings(
 
 const ROOM_ID_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
-export const PICKABLE_LETTERS = "abcdefghijklmnoprstuvwy".split("");
+export const PICKABLE_START_LETTERS = "abcdefghijklmnoprstuvwy".split("");
+export const PICKABLE_END_LETTERS = "abcdefghiklmnoprstuvwy".split("");
+export const PICKABLE_LETTERS = PICKABLE_START_LETTERS;
 
 export function generateRoomId(existing: Set<RoomId>): RoomId {
   for (let attempt = 0; attempt < 50; attempt++) {
@@ -52,6 +55,7 @@ export function generateRoomId(existing: Set<RoomId>): RoomId {
 export function createRoom(id: RoomId, host: Player): Room {
   return {
     id,
+    name: null,
     hostId: host.id,
     players: [host],
     phase: "lobby",
@@ -66,6 +70,9 @@ export function createRoom(id: RoomId, host: Player): Room {
     roundTimer: null,
     createdAt: Date.now(),
     emptySinceMs: null,
+    roundHistory: [],
+    gameStartedAt: null,
+    gameEndedAt: null,
   };
 }
 
@@ -99,6 +106,7 @@ export function toPublicRoom(room: Room): PublicRoom {
 
   return {
     id: room.id,
+    name: room.name,
     hostId: room.hostId,
     players: room.players,
     phase: room.phase,
@@ -106,6 +114,9 @@ export function toPublicRoom(room: Room): PublicRoom {
     roundsPlayed: room.roundsPlayed,
     usedWordsCount: room.usedWords.size,
     settings: room.settings,
+    roundHistory: room.roundHistory,
+    gameStartedAt: room.gameStartedAt,
+    gameEndedAt: room.gameEndedAt,
   };
 }
 
@@ -148,6 +159,24 @@ export function validateRoomCode(raw: string): string | null {
   return ROOM_CODE_RE.test(cleaned) ? cleaned : null;
 }
 
+const ROOM_NAME_RE = /^[\p{L}\p{N} _.\-!?'&]+$/u;
+
+export function sanitizeRoomName(raw: string): string {
+  return raw.replace(/\s+/g, " ").trim().slice(0, 30);
+}
+
+export function validateRoomName(
+  raw: string,
+): { ok: true; name: string | null } | { ok: false; error: string } {
+  const cleaned = sanitizeRoomName(raw);
+  if (cleaned.length === 0) return { ok: true, name: null };
+  if (cleaned.length < 1 || cleaned.length > 30)
+    return { ok: false, error: "Room name 1-30 chars" };
+  if (!ROOM_NAME_RE.test(cleaned))
+    return { ok: false, error: "Room name has invalid characters" };
+  return { ok: true, name: cleaned };
+}
+
 export function isNameTaken(room: Room, name: string, exceptPlayerId?: PlayerId): boolean {
   const lower = name.trim().toLowerCase();
   return room.players.some(
@@ -155,17 +184,18 @@ export function isNameTaken(room: Room, name: string, exceptPlayerId?: PlayerId)
   );
 }
 
-export function pickRandomLetter(): string {
-  const idx = Math.floor(Math.random() * PICKABLE_LETTERS.length);
-  return PICKABLE_LETTERS[idx] ?? "a";
+export function pickRandomLetter(slot: "start" | "end" = "start"): string {
+  const letters = slot === "end" ? PICKABLE_END_LETTERS : PICKABLE_START_LETTERS;
+  const idx = Math.floor(Math.random() * letters.length);
+  return letters[idx] ?? "a";
 }
 
 export function selectPickers(room: Room): { start: Player; end: Player } {
-  const connected = room.players.filter((p) => p.connected);
-  const eligible = connected.filter(
-    (p) => p.ready || connected.every((q) => !q.ready),
+  const active = room.players.filter((p) => p.connected && !p.spectator);
+  const eligible = active.filter(
+    (p) => p.ready || active.every((q) => !q.ready),
   );
-  const pool = eligible.length >= 2 ? eligible : connected;
+  const pool = eligible.length >= 2 ? eligible : active;
   if (pool.length < 2) throw new Error("Not enough players to pick");
 
   const recent = new Set(room.recentPickers);

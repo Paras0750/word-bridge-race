@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import {
+  BrainIcon,
   CheckCircle2Icon,
   ClipboardXIcon,
   EyeIcon,
@@ -75,7 +76,7 @@ function LogRow({ entry, meId }: { entry: AttemptEntry; meId: string }) {
           "flex items-center justify-between gap-2 rounded-sm border px-2.5 py-1.5 text-sm",
           entry.valid
             ? "border-[var(--success)]/30 bg-[var(--success)]/5"
-            : "border-white/5 bg-white/[0.02]",
+            : "bg-muted/30",
         )}
       >
         <div className="flex min-w-0 items-center gap-2">
@@ -120,10 +121,27 @@ function LogRow({ entry, meId }: { entry: AttemptEntry; meId: string }) {
 
   if (entry.kind === "peek") {
     return (
-      <div className="bg-muted/30 flex items-center gap-2 rounded-sm border border-white/5 px-2.5 py-1.5 text-sm">
+      <div className="bg-muted/30 flex items-center gap-2 rounded-sm border px-2.5 py-1.5 text-sm">
         <EyeIcon className="text-muted-foreground size-3.5 shrink-0" />
         <span className="text-muted-foreground truncate text-xs">
           {entry.message}
+        </span>
+      </div>
+    );
+  }
+
+  if (entry.kind === "hivemind") {
+    return (
+      <div className="bg-muted/30 flex items-center gap-2 rounded-sm border border-[var(--info)]/30 bg-[var(--info)]/5 px-2.5 py-1.5 text-sm">
+        <BrainIcon className="size-3.5 shrink-0 text-[var(--info)]" />
+        <span className="text-muted-foreground truncate text-xs">
+          <span className="text-foreground font-medium">{entry.names[0]}</span>{" "}
+          & <span className="text-foreground font-medium">{entry.names[1]}</span>{" "}
+          both tried{" "}
+          <span className="text-foreground font-mono">{entry.word}</span>
+        </span>
+        <span className="text-muted-foreground/70 ml-auto shrink-0 text-[10px] uppercase tracking-wider">
+          hivemind
         </span>
       </div>
     );
@@ -151,6 +169,8 @@ function humanReason(reason?: string): string {
       return "wrong end";
     case "not_a_word":
       return "not a word";
+    case "almost":
+      return "so close";
     case "already_used":
       return "used";
     case "too_short":

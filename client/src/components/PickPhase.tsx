@@ -8,7 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { getSocket } from "@/lib/socket";
-import { PICKABLE_LETTERS, type PublicRoom } from "@/lib/types";
+import {
+  PICKABLE_END_LETTERS,
+  PICKABLE_START_LETTERS,
+  type PublicRoom,
+} from "@/lib/types";
 
 interface Props {
   room: PublicRoom;
@@ -22,6 +26,8 @@ export function PickPhase({ room, meId }: Props) {
   const [submittingLetter, setSubmittingLetter] = useState<string | null>(null);
   const [error, setError] = useState<string>("");
   const submitting = submittingLetter !== null;
+  const letters =
+    slot === "end" ? PICKABLE_END_LETTERS : PICKABLE_START_LETTERS;
 
   const totalMs = room.settings.pickTimeoutSeconds * 1000;
   const [secondsLeft, setSecondsLeft] = useState<number>(room.settings.pickTimeoutSeconds);
@@ -49,7 +55,7 @@ export function PickPhase({ room, meId }: Props) {
   };
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-4">
+    <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 mx-auto flex max-w-2xl flex-col gap-4 duration-300">
       <Card>
         <CardHeader className="text-center">
           <Badge variant="outline" className="mx-auto w-fit rounded text-[10px] uppercase tracking-[0.2em]">
@@ -89,7 +95,7 @@ export function PickPhase({ room, meId }: Props) {
       <Card>
         <CardContent className="pt-5">
           <div className="grid grid-cols-6 gap-2 sm:grid-cols-8 md:grid-cols-12">
-            {PICKABLE_LETTERS.map((l) => (
+            {letters.map((l) => (
               <Button
                 key={l}
                 variant="outline"

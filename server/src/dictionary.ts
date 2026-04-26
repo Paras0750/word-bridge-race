@@ -55,6 +55,89 @@ export function countMatching(start: string, end: string): number {
   return count;
 }
 
+export function sampleMatching(
+  start: string,
+  end: string,
+  exclude: Set<string>,
+  limit: number,
+): string[] {
+  const s = start.trim().toLowerCase();
+  const e = end.trim().toLowerCase();
+  if (!s || !e || limit <= 0) return [];
+  const out: string[] = [];
+  for (const w of loadDictionary()) {
+    if (w.startsWith(s) && w.endsWith(e) && !exclude.has(w)) {
+      out.push(w);
+      if (out.length >= limit * 8) break;
+    }
+  }
+  // Random sample
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = out[i]!;
+    out[i] = out[j]!;
+    out[j] = tmp;
+  }
+  return out.slice(0, limit);
+}
+
+function differsByOneEdit(a: string, b: string): boolean {
+  if (a === b) return false;
+  const la = a.length;
+  const lb = b.length;
+  if (Math.abs(la - lb) > 1) return false;
+  if (la === lb) {
+    let diffs = 0;
+    for (let i = 0; i < la; i++) {
+      if (a[i] !== b[i]) {
+        diffs++;
+        if (diffs > 1) return false;
+      }
+    }
+    return diffs === 1;
+  }
+  const longer = la > lb ? a : b;
+  const shorter = la > lb ? b : a;
+  let i = 0;
+  let j = 0;
+  let diffs = 0;
+  while (i < longer.length && j < shorter.length) {
+    if (longer[i] !== shorter[j]) {
+      diffs++;
+      if (diffs > 1) return false;
+      i++;
+    } else {
+      i++;
+      j++;
+    }
+  }
+  return true;
+}
+
+export function isAlmostMatch(
+  word: string,
+  start: string,
+  end: string,
+): boolean {
+  const w = word.trim().toLowerCase();
+  if (w.length < 3) return false;
+  const s = start.trim().toLowerCase();
+  const e = end.trim().toLowerCase();
+  if (!s || !e) return false;
+  const dict = loadDictionary();
+  const startedAt = Date.now();
+  let checked = 0;
+  for (const candidate of dict) {
+    if (Date.now() - startedAt > 12) break;
+    if (Math.abs(candidate.length - w.length) > 1) continue;
+    if (!candidate.startsWith(s) || !candidate.endsWith(e)) continue;
+    checked++;
+    if (differsByOneEdit(w, candidate)) return true;
+    if (checked >= 500) break;
+  }
+  return false;
+}
+
 export function dictionarySize(): number {
   return loadDictionary().size;
 }
