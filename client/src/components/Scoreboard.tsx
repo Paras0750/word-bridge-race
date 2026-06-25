@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { getSocket } from "@/lib/socket";
 import type { PublicRoom } from "@/lib/types";
+import { WORD_LIST_META } from "@/lib/types";
 import { AttemptsLog } from "./AttemptsLog";
 import type { AttemptEntry } from "@/app/room/[roomId]/page";
 
@@ -128,7 +129,7 @@ export function Scoreboard({
                     {room.round?.end}
                   </span>{" "}
                   {noWords
-                    ? "— zero matches in the dictionary."
+                    ? `— zero matches in the ${WORD_LIST_META[room.settings.wordListId].label.toLowerCase()} list.`
                     : skipped
                       ? "was skipped."
                       : "stumped everyone."}
@@ -253,7 +254,12 @@ export function Scoreboard({
         </Card>
       </div>
 
-      <AttemptsLog attempts={attempts} meId={meId} emptyHint="No guesses this round." />
+      <AttemptsLog
+        attempts={attempts}
+        meId={meId}
+        wordListId={room.settings.wordListId}
+        emptyHint="No guesses this round."
+      />
     </div>
   );
 }

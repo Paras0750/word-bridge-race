@@ -22,12 +22,12 @@ import {
 } from "./rooms";
 import { validateWord } from "./validate";
 import {
+  allWordListSizes,
   countMatching,
-  dictionarySize,
   isAlmostMatch,
-  loadDictionary,
+  loadAllWordLists,
   sampleMatching,
-} from "./dictionary";
+} from "./wordlists";
 import { log, shortId } from "./logger";
 import type {
   ClientToServerEvents,
@@ -92,8 +92,8 @@ function pickPeekMessage(
   return template.replace("{name}", name);
 }
 
-loadDictionary();
-log.info("dictionary.loaded", { words: dictionarySize() });
+loadAllWordLists();
+log.info("wordlists.loaded", { sizes: allWordListSizes() });
 
 const app = express();
 app.use(cors({ origin: CORS_ORIGIN }));
@@ -101,7 +101,7 @@ app.get("/healthz", (_req, res) => {
   res.json({
     ok: true,
     rooms: rooms.size,
-    words: dictionarySize(),
+    wordLists: allWordListSizes(),
     ts: Date.now(),
   });
 });
@@ -318,7 +318,11 @@ function applyPick(
 
   room.round.end = normalized;
 
-  const possible = countMatching(room.round.start, room.round.end);
+  const possible = countMatching(
+    room.round.start,
+    room.round.end,
+    room.settings.wordListId,
+  );
   room.round.possibleWordCount = possible;
   log.info("round.pick.locked", {
     roomId: room.id,
@@ -463,6 +467,7 @@ function finishRound(room: Room): void {
       room.round.end,
       room.usedWords,
       3,
+      room.settings.wordListId,
     );
     if (samples.length > 0) {
       io.to(room.id).emit("round_words_reveal", {
@@ -862,6 +867,7 @@ io.on("connection", (socket: IOSocket) => {
       room.round.start,
       room.round.end,
       room.usedWords,
+      room.settings.wordListId,
     );
 
     if (!result.valid) {
@@ -870,7 +876,12 @@ io.on("connection", (socket: IOSocket) => {
         reason === "not_a_word" &&
         room.round.start &&
         room.round.end &&
-        isAlmostMatch(rawWord, room.round.start, room.round.end)
+        isAlmostMatch(
+          rawWord,
+          room.round.start,
+          room.round.end,
+          room.settings.wordListId,
+        )
       ) {
         reason = "almost";
       }

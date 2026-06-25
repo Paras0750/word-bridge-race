@@ -1,52 +1,77 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+import type { WordListId } from "./types";
+import { WORD_LIST_IDS } from "./types";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const DICT_PATH = resolve(here, "dictionary.txt");
+const LISTS_DIR = resolve(here, "wordlists");
 
-let dictionary: Set<string> | null = null;
-let firstLastIndex: Map<string, number> | null = null;
+const REGISTRY: Record<WordListId, { file: string; minLength: number }> = {
+  dictionary: { file: "dictionary.txt", minLength: 3 },
+  pets: { file: "pets.txt", minLength: 3 },
+  atlas: { file: "atlas.txt", minLength: 3 },
+  coding: { file: "coding.txt", minLength: 3 },
+};
 
-export function loadDictionary(): Set<string> {
-  if (dictionary) return dictionary;
-  const raw = readFileSync(DICT_PATH, "utf8");
+const wordLists = new Map<WordListId, Set<string>>();
+const firstLastIndexes = new Map<WordListId, Map<string, number>>();
+
+function loadWordList(listId: WordListId): Set<string> {
+  const cached = wordLists.get(listId);
+  if (cached) return cached;
+
+  const { file, minLength } = REGISTRY[listId];
+  const path = resolve(LISTS_DIR, file);
+  const raw = readFileSync(path, "utf8");
   const set = new Set<string>();
   for (const line of raw.split("\n")) {
     const w = line.trim().toLowerCase();
-    if (w.length >= 3) set.add(w);
+    if (w.length >= minLength && /^[a-z]+$/.test(w)) set.add(w);
   }
-  dictionary = set;
+  wordLists.set(listId, set);
   return set;
 }
 
-function ensureIndex(): Map<string, number> {
-  if (firstLastIndex) return firstLastIndex;
+export function loadAllWordLists(): void {
+  for (const listId of WORD_LIST_IDS) {
+    loadWordList(listId);
+  }
+}
+
+function ensureIndex(listId: WordListId): Map<string, number> {
+  const cached = firstLastIndexes.get(listId);
+  if (cached) return cached;
+
   const idx = new Map<string, number>();
-  for (const w of loadDictionary()) {
+  for (const w of loadWordList(listId)) {
     const first = w[0];
     const last = w[w.length - 1];
     if (!first || !last) continue;
     const key = `${first}${last}`;
     idx.set(key, (idx.get(key) ?? 0) + 1);
   }
-  firstLastIndex = idx;
+  firstLastIndexes.set(listId, idx);
   return idx;
 }
 
-export function isRealWord(word: string): boolean {
-  return loadDictionary().has(word.trim().toLowerCase());
+export function isValidWord(word: string, listId: WordListId): boolean {
+  return loadWordList(listId).has(word.trim().toLowerCase());
 }
 
-export function countMatching(start: string, end: string): number {
+export function countMatching(
+  start: string,
+  end: string,
+  listId: WordListId,
+): number {
   const s = start.trim().toLowerCase();
   const e = end.trim().toLowerCase();
   if (!s || !e) return 0;
   if (s.length === 1 && e.length === 1) {
-    return ensureIndex().get(`${s}${e}`) ?? 0;
+    return ensureIndex(listId).get(`${s}${e}`) ?? 0;
   }
   let count = 0;
-  for (const w of loadDictionary()) {
+  for (const w of loadWordList(listId)) {
     if (w.startsWith(s) && w.endsWith(e)) {
       count += 1;
       if (count >= 1000) break;
@@ -60,18 +85,18 @@ export function sampleMatching(
   end: string,
   exclude: Set<string>,
   limit: number,
+  listId: WordListId,
 ): string[] {
   const s = start.trim().toLowerCase();
   const e = end.trim().toLowerCase();
   if (!s || !e || limit <= 0) return [];
   const out: string[] = [];
-  for (const w of loadDictionary()) {
+  for (const w of loadWordList(listId)) {
     if (w.startsWith(s) && w.endsWith(e) && !exclude.has(w)) {
       out.push(w);
       if (out.length >= limit * 8) break;
     }
   }
-  // Random sample
   for (let i = out.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     const tmp = out[i]!;
@@ -118,13 +143,14 @@ export function isAlmostMatch(
   word: string,
   start: string,
   end: string,
+  listId: WordListId,
 ): boolean {
   const w = word.trim().toLowerCase();
   if (w.length < 3) return false;
   const s = start.trim().toLowerCase();
   const e = end.trim().toLowerCase();
   if (!s || !e) return false;
-  const dict = loadDictionary();
+  const dict = loadWordList(listId);
   const startedAt = Date.now();
   let checked = 0;
   for (const candidate of dict) {
@@ -138,6 +164,14 @@ export function isAlmostMatch(
   return false;
 }
 
-export function dictionarySize(): number {
-  return loadDictionary().size;
+export function wordListSize(listId: WordListId): number {
+  return loadWordList(listId).size;
+}
+
+export function allWordListSizes(): Record<WordListId, number> {
+  const out = {} as Record<WordListId, number>;
+  for (const listId of WORD_LIST_IDS) {
+    out[listId] = wordListSize(listId);
+  }
+  return out;
 }

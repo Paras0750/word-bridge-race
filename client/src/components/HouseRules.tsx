@@ -3,6 +3,7 @@
 import {
   ClipboardXIcon,
   EyeIcon,
+  GlobeIcon,
   HandIcon,
   ScrollTextIcon,
   SmileIcon,
@@ -10,39 +11,50 @@ import {
   ZapIcon,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { WordListId } from "@/lib/types";
+import { WORD_LIST_META } from "@/lib/types";
 
-const RULES: Array<{ icon: typeof ZapIcon; text: string }> = [
-  {
-    icon: ZapIcon,
-    text: "Type a real word that bridges the two letters. First valid answer wins.",
-  },
-  {
-    icon: ClipboardXIcon,
-    text: "Cmd+V is not a word.",
-  },
-  {
-    icon: EyeIcon,
-    text: "'Researching' mid-round is never the answer.",
-  },
-  {
-    icon: TimerIcon,
-    text: "Pickers, choose fast. Dawdle and the dictionary picks for you.",
-  },
-  {
-    icon: HandIcon,
-    text: "Cursed letters? Vote skip. Unanimous = the round dies, no one has to suffer.",
-  },
-  {
-    icon: ScrollTextIcon,
-    text: "Same word can't be reused in this room. Make fresh mistakes.",
-  },
-  {
-    icon: SmileIcon,
-    text: "It's words and pride. Trust your brain, type fast, take the L gracefully.",
-  },
-];
+interface Props {
+  wordListId: WordListId;
+}
 
-export function HouseRules() {
+export function HouseRules({ wordListId }: Props) {
+  const modeLabel = WORD_LIST_META[wordListId].label.toLowerCase();
+
+  const RULES: Array<{ icon: typeof ZapIcon; text: string }> = [
+    {
+      icon: ZapIcon,
+      text: `Type a valid ${modeLabel} word that bridges the two letters. First valid answer wins.`,
+    },
+    ...(wordListId === "atlas" && WORD_LIST_META.atlas.detail
+      ? [{ icon: GlobeIcon, text: WORD_LIST_META.atlas.detail }]
+      : []),
+    {
+      icon: ClipboardXIcon,
+      text: "Cmd+V is not a word.",
+    },
+    {
+      icon: EyeIcon,
+      text: "'Researching' mid-round is never the answer.",
+    },
+    {
+      icon: TimerIcon,
+      text: "Pickers, choose fast. Dawdle and the list picks for you.",
+    },
+    {
+      icon: HandIcon,
+      text: "Cursed letters? Vote skip. Unanimous = the round dies, no one has to suffer.",
+    },
+    {
+      icon: ScrollTextIcon,
+      text: "Same word can't be reused in this room. Make fresh mistakes.",
+    },
+    {
+      icon: SmileIcon,
+      text: "It's words and pride. Trust your brain, type fast, take the L gracefully.",
+    },
+  ];
+
   return (
     <Card>
       <CardHeader>

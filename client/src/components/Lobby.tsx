@@ -414,7 +414,7 @@ export function Lobby({ room, meId, isHost }: Props) {
 
       <div className="flex flex-col gap-4">
         <SettingsPanel room={room} isHost={isHost} />
-        <HouseRules />
+        <HouseRules wordListId={room.settings.wordListId} />
       </div>
     </div>
   );

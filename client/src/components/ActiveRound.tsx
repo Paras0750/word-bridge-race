@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { getSocket } from "@/lib/socket";
-import type { PublicRoom } from "@/lib/types";
+import type { PublicRoom, WordListId } from "@/lib/types";
+import { WORD_LIST_META } from "@/lib/types";
 import { AttemptsLog } from "./AttemptsLog";
 import type { AttemptEntry } from "@/app/room/[roomId]/page";
 
@@ -179,7 +180,10 @@ export function ActiveRound({ room, meId, attempts }: Props) {
           });
           setWord("");
         } else {
-          setFeedback({ tone: "bad", text: humanizeReason(res.data.reason) });
+          setFeedback({
+            tone: "bad",
+            text: humanizeReason(res.data.reason, room.settings.wordListId),
+          });
           setWord("");
           setTimeout(() => inputRef.current?.focus(), 0);
         }
@@ -367,7 +371,12 @@ export function ActiveRound({ room, meId, attempts }: Props) {
         <LeaderboardStrip players={sortedPlayers} meId={meId} />
       </div>
 
-      <AttemptsLog attempts={attempts} meId={meId} emptyHint="Be the first to guess!" />
+      <AttemptsLog
+        attempts={attempts}
+        meId={meId}
+        wordListId={room.settings.wordListId}
+        emptyHint="Be the first to guess!"
+      />
     </div>
   );
 }
@@ -470,7 +479,7 @@ function SkipVoteRow({ room, meId }: { room: PublicRoom; meId: string }) {
   );
 }
 
-function humanizeReason(reason?: string): string {
+function humanizeReason(reason?: string, wordListId: WordListId = "dictionary"): string {
   switch (reason) {
     case "wrong_start":
       return "Doesn't start with the right letter.";
@@ -483,7 +492,7 @@ function humanizeReason(reason?: string): string {
     case "empty":
       return "Type something.";
     case "not_a_word":
-      return "Not in the dictionary.";
+      return WORD_LIST_META[wordListId].notFoundLabel;
     case "almost":
       return "So close. Check your spelling.";
     case "already_used":

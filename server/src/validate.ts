@@ -1,4 +1,5 @@
-import { isRealWord } from "./dictionary";
+import { isValidWord } from "./wordlists";
+import type { WordListId } from "./types";
 
 export interface ValidationResult {
   valid: boolean;
@@ -10,6 +11,7 @@ export function validateWord(
   start: string,
   end: string,
   usedWords: Set<string>,
+  listId: WordListId,
 ): ValidationResult {
   const w = word.trim().toLowerCase();
   if (w.length === 0) return { valid: false, reason: "empty" };
@@ -28,7 +30,7 @@ export function validateWord(
   }
 
   if (usedWords.has(w)) return { valid: false, reason: "already_used" };
-  if (!isRealWord(w)) return { valid: false, reason: "not_a_word" };
+  if (!isValidWord(w, listId)) return { valid: false, reason: "not_a_word" };
 
   return { valid: true };
 }

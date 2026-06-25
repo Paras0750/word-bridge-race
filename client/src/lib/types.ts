@@ -54,7 +54,40 @@ export interface PublicRound {
   skipVoteIds: PlayerId[];
 }
 
+export type WordListId = "dictionary" | "pets" | "atlas" | "coding";
+
+export const WORD_LIST_IDS: WordListId[] = ["dictionary", "pets", "atlas", "coding"];
+
+export const WORD_LIST_META: Record<
+  WordListId,
+  { label: string; hint: string; notFoundLabel: string; detail?: string }
+> = {
+  dictionary: {
+    label: "Dictionary",
+    hint: "Any real English word",
+    notFoundLabel: "Not in the dictionary.",
+  },
+  pets: {
+    label: "Pets",
+    hint: "Animal & pet names",
+    notFoundLabel: "Not a known pet or animal.",
+  },
+  atlas: {
+    label: "Atlas",
+    hint: "Countries & single-word cities",
+    notFoundLabel: "Not a known country or city.",
+    detail:
+      "Atlas only includes single-word places (e.g. paris, tokyo). Multi-word names like “new york” are excluded by the game’s letter-only rule.",
+  },
+  coding: {
+    label: "Coding",
+    hint: "Programming terms & tools",
+    notFoundLabel: "Not a known coding term.",
+  },
+};
+
 export interface RoomSettings {
+  wordListId: WordListId;
   countdownSeconds: number;
   pickTimeoutSeconds: number;
   scoreboardSeconds: number;

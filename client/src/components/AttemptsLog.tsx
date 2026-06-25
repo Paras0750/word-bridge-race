@@ -13,15 +13,24 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { AttemptEntry } from "@/app/room/[roomId]/page";
+import type { WordListId } from "@/lib/types";
+import { WORD_LIST_META } from "@/lib/types";
 
 interface Props {
   attempts: AttemptEntry[];
   meId: string;
   className?: string;
   emptyHint?: string;
+  wordListId?: WordListId;
 }
 
-export function AttemptsLog({ attempts, meId, className, emptyHint }: Props) {
+export function AttemptsLog({
+  attempts,
+  meId,
+  className,
+  emptyHint,
+  wordListId = "dictionary",
+}: Props) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -51,7 +60,7 @@ export function AttemptsLog({ attempts, meId, className, emptyHint }: Props) {
             className="no-scrollbar flex max-h-72 flex-col gap-1 overflow-y-auto sm:max-h-[28rem]"
           >
             {attempts.map((a) => (
-              <LogRow key={a.id} entry={a} meId={meId} />
+              <LogRow key={a.id} entry={a} meId={meId} wordListId={wordListId} />
             ))}
           </div>
         )}
@@ -60,7 +69,15 @@ export function AttemptsLog({ attempts, meId, className, emptyHint }: Props) {
   );
 }
 
-function LogRow({ entry, meId }: { entry: AttemptEntry; meId: string }) {
+function LogRow({
+  entry,
+  meId,
+  wordListId,
+}: {
+  entry: AttemptEntry;
+  meId: string;
+  wordListId: WordListId;
+}) {
   const isMe = entry.playerId === meId;
   const nameLabel = (
     <span className="text-muted-foreground text-[11px]">
@@ -96,7 +113,7 @@ function LogRow({ entry, meId }: { entry: AttemptEntry; meId: string }) {
           </span>
         </div>
         <span className="text-muted-foreground/70 shrink-0 text-[10px] uppercase tracking-wider">
-          {entry.valid ? "winner" : humanReason(entry.reason)}
+          {entry.valid ? "winner" : humanReason(entry.reason, wordListId)}
         </span>
       </div>
     );
@@ -161,14 +178,14 @@ function LogRow({ entry, meId }: { entry: AttemptEntry; meId: string }) {
   );
 }
 
-function humanReason(reason?: string): string {
+function humanReason(reason?: string, wordListId: WordListId = "dictionary"): string {
   switch (reason) {
     case "wrong_start":
       return "wrong start";
     case "wrong_end":
       return "wrong end";
     case "not_a_word":
-      return "not a word";
+      return WORD_LIST_META[wordListId].notFoundLabel.replace(/\.$/, "").toLowerCase();
     case "almost":
       return "so close";
     case "already_used":

@@ -5,11 +5,13 @@ import type {
   Room,
   RoomId,
   RoomSettings,
+  WordListId,
 } from "./types";
-import { SETTINGS_BOUNDS } from "./types";
+import { SETTINGS_BOUNDS, WORD_LIST_IDS } from "./types";
 
 export function defaultSettings(): RoomSettings {
   return {
+    wordListId: "dictionary",
     countdownSeconds: SETTINGS_BOUNDS.countdownSeconds.default,
     pickTimeoutSeconds: SETTINGS_BOUNDS.pickTimeoutSeconds.default,
     scoreboardSeconds: SETTINGS_BOUNDS.scoreboardSeconds.default,
@@ -23,6 +25,12 @@ export function clampSettings(
   patch: Partial<RoomSettings>,
 ): RoomSettings {
   const next: RoomSettings = { ...current };
+  if (
+    patch.wordListId !== undefined &&
+    WORD_LIST_IDS.includes(patch.wordListId as WordListId)
+  ) {
+    next.wordListId = patch.wordListId;
+  }
   for (const key of Object.keys(SETTINGS_BOUNDS) as (keyof RoomSettings)[]) {
     const proposed = patch[key];
     if (proposed === undefined) continue;
