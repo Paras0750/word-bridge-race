@@ -1,14 +1,22 @@
 /**
- * Regenerates curated pets.txt, atlas.txt, and coding.txt under src/wordlists/.
+ * Regenerates curated word lists under src/wordlists/.
+ * Cities: optional json-cities.json → cities.txt → atlas.txt (India-heavy, 4000+).
+ *
+ * json-cities.json is gitignored (>100MB). The committed cities.txt is used at
+ * build/runtime. To refresh cities from source, download json-cities.json into
+ * server/src/wordlists/ then run this script.
+ *
  * Run: bun run scripts/build-wordlists.ts
  */
 
-import { writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const outDir = resolve(here, "../src/wordlists");
+const CITIES_JSON_PATH = resolve(outDir, "json-cities.json");
+const CITIES_TXT_PATH = resolve(outDir, "cities.txt");
 
 const PETS = [
   "aardvark", "addax", "agouti", "albatross", "alligator", "alpaca", "anaconda",
@@ -51,59 +59,55 @@ const PETS = [
 ];
 
 const COUNTRIES = [
-  "afghanistan", "albania", "algeria", "andorra", "angola", "argentina",
-  "armenia", "australia", "austria", "azerbaijan", "bahamas", "bahrain",
+  "afghanistan", "albania", "algeria", "andorra", "angola", "antigua and barbuda",
+  "argentina", "armenia", "australia", "austria", "azerbaijan", "bahamas", "bahrain",
   "bangladesh", "barbados", "belarus", "belgium", "belize", "benin", "bhutan",
-  "bolivia", "botswana", "brazil", "brunei", "bulgaria", "burkina", "burundi",
-  "cambodia", "cameroon", "canada", "chad", "chile", "china", "colombia",
-  "comoros", "congo", "croatia", "cuba", "cyprus", "denmark", "djibouti",
-  "dominica", "ecuador", "egypt", "eritrea", "estonia", "eswatini", "ethiopia",
+  "bolivia", "bosnia and herzegovina", "botswana", "brazil", "brunei", "bulgaria",
+  "burkina faso", "burundi", "cabo verde", "cambodia", "cameroon", "canada",
+  "central african republic", "chad", "chile", "china", "colombia", "comoros", "congo",
+  "costa rica", "croatia", "cuba", "cyprus", "czechia", "democratic republic of the congo",
+  "denmark", "djibouti", "dominica", "dominican republic", "ecuador", "egypt",
+  "el salvador", "equatorial guinea", "eritrea", "estonia", "eswatini", "ethiopia",
   "fiji", "finland", "france", "gabon", "gambia", "georgia", "germany", "ghana",
-  "greece", "grenada", "guatemala", "guinea", "guyana", "haiti", "honduras",
-  "hungary", "iceland", "india", "indonesia", "iran", "iraq", "ireland", "israel",
-  "italy", "jamaica", "japan", "jordan", "kazakhstan", "kenya", "kiribati",
-  "kosovo", "kuwait", "kyrgyzstan", "laos", "latvia", "lebanon", "lesotho",
-  "liberia", "libya", "liechtenstein", "lithuania", "luxembourg", "madagascar",
-  "malawi", "malaysia", "maldives", "mali", "malta", "mauritania", "mauritius",
-  "mexico", "micronesia", "moldova", "monaco", "mongolia", "montenegro",
-  "morocco", "mozambique", "myanmar", "namibia", "nauru", "nepal", "nicaragua",
-  "niger", "nigeria", "norway", "oman", "pakistan", "palau", "panama", "paraguay",
-  "peru", "philippines", "poland", "portugal", "qatar", "romania", "russia",
-  "rwanda", "samoa", "senegal", "serbia", "seychelles", "singapore", "slovakia",
-  "slovenia", "somalia", "spain", "sudan", "suriname", "sweden", "switzerland",
-  "syria", "taiwan", "tajikistan", "tanzania", "thailand", "togo", "tonga",
-  "tunisia", "turkey", "turkmenistan", "tuvalu", "uganda", "ukraine", "uruguay",
-  "uzbekistan", "vanuatu", "venezuela", "vietnam", "yemen", "zambia", "zimbabwe",
+  "greece", "grenada", "guatemala", "guinea", "guinea bissau", "guyana", "haiti",
+  "honduras", "hungary", "iceland", "india", "indonesia", "iran", "iraq", "ireland",
+  "israel", "italy", "ivory coast", "jamaica", "japan", "jordan", "kazakhstan", "kenya",
+  "kiribati", "kosovo", "kuwait", "kyrgyzstan", "laos", "latvia", "lebanon", "lesotho",
+  "liberia", "libya", "liechtenstein", "lithuania", "luxembourg", "madagascar", "malawi",
+  "malaysia", "maldives", "mali", "malta", "marshall islands", "mauritania", "mauritius",
+  "mexico", "micronesia", "moldova", "monaco", "mongolia", "montenegro", "morocco",
+  "mozambique", "myanmar", "namibia", "nauru", "nepal", "netherlands", "new zealand",
+  "nicaragua", "niger", "nigeria", "north korea", "north macedonia", "norway", "oman",
+  "pakistan", "palau", "palestine", "panama", "papua new guinea", "paraguay", "peru",
+  "philippines", "poland", "portugal", "qatar", "republic of the congo", "romania",
+  "russia", "rwanda", "saint kitts and nevis", "saint lucia",
+  "saint vincent and the grenadines", "samoa", "san marino", "sao tome and principe",
+  "saudi arabia", "senegal", "serbia", "seychelles", "sierra leone", "singapore",
+  "slovakia", "slovenia", "solomon islands", "somalia", "south africa", "south korea",
+  "south sudan", "spain", "sri lanka", "sudan", "suriname", "sweden", "switzerland",
+  "syria", "taiwan", "tajikistan", "tanzania", "thailand", "timor leste", "togo", "tonga",
+  "trinidad and tobago", "tunisia", "turkey", "turkmenistan", "tuvalu", "uganda",
+  "ukraine", "united arab emirates", "united kingdom", "united states", "uruguay",
+  "uzbekistan", "vanuatu", "vatican city", "venezuela", "vietnam", "yemen", "zambia",
+  "zimbabwe",
 ];
 
-const CITIES = [
-  "aberdeen", "adelaide", "albany", "amsterdam", "ankara", "antwerp", "athens",
-  "atlanta", "auckland", "austin", "baltimore", "bangkok", "barcelona", "basel",
-  "beijing", "beirut", "belfast", "berlin", "bern", "birmingham", "bogota",
-  "bologna", "bonn", "boston", "boulder", "bournemouth", "bradford", "brasilia",
-  "bremen", "bristol", "brussels", "bucharest", "budapest", "buffalo",
-  "burlington", "cairo", "calgary", "cambridge", "canberra", "cardiff", "casablanca",
-  "charlotte", "chennai", "chicago", "cincinnati", "cleveland", "cologne",
-  "columbus", "copenhagen", "dallas", "darwin", "delhi", "denver", "detroit",
-  "doha", "dresden", "dubai", "dublin", "dunedin", "durban", "edinburgh",
-  "edmonton", "exeter", "florence", "frankfurt", "fresno", "geneva", "glasgow",
-  "gothenburg", "halifax", "hamburg", "hamilton", "hartford", "helsinki",
-  "houston", "indianapolis", "inverness", "istanbul", "jakarta", "johannesburg",
-  "kabul", "karachi", "kiev", "kingston", "kolkata", "lagos", "leeds",
-  "leicester", "leipzig", "lima", "lisbon", "liverpool", "london",
-  "louisville", "lyon", "madrid", "manchester", "manila", "marseille", "melbourne",
-  "memphis", "mexico", "miami", "milan", "milwaukee", "minneapolis", "monaco",
-  "montreal", "moscow", "mumbai", "munich", "nagoya", "nairobi", "naples",
-  "nashville", "newark", "nice", "nottingham", "oakland", "osaka", "oslo",
-  "ottawa", "oxford", "paris", "perth", "philadelphia", "phoenix", "pittsburgh",
-  "plymouth", "portland", "portsmouth", "prague", "providence", "quebec", "quito",
-  "raleigh", "reading", "regina", "reykjavik", "richmond", "rio", "riyadh",
-  "rochester", "rome", "rotterdam", "sacramento", "santiago", "sapporo", "seattle",
-  "seoul", "seville", "shanghai", "sheffield", "singapore", "sofia", "southampton",
-  "stockholm", "stuttgart", "sydney", "syracuse", "taipei", "tampa", "tehran",
-  "tokyo", "toledo", "toronto", "toulouse", "tucson", "tulsa", "turin", "utrecht",
-  "valencia", "vancouver", "venice", "vienna", "warsaw", "washington", "wellington",
-  "winnipeg", "yokohama", "york", "zurich",
+/** Extra Indian / international cities not always in the dataset. */
+const CITY_SUPPLEMENT = [
+  "ram nagar", "ramnagar", "srinagar", "new delhi", "old delhi", "greater noida",
+  "salt lake", "santacruz", "andheri", "bandra", "powai", "worli", "malad",
+  "borivali", "thane west", "vashi", "nerul", "belapur", "panaji", "mapusa",
+  "margao", "vasco da gama", "hubli", "dharwad", "belgaum", "gulbarga", "mysuru",
+  "shivamogga", "tumakuru", "ballari", "raichur", "bidar", "hassan", "mandya",
+  "chamarajanagar", "chikmagalur", "udupi", "karwar", "bagalkot", "bijapur",
+  "gangtok", "namchi", "itanagar", "pasighat", "aizawl", "lunglei", "kohima",
+  "dimapur", "imphal", "churachandpur", "shillong", "tura", "agartala", "udaipur",
+  "jaisalmer", "bikaner", "ajmer", "kota", "alwar", "bharatpur", "sikar", "pali",
+  "barmer", "jodhpur", "mount abu", "pushkar", "silchar", "dibrugarh", "jorhat",
+  "tezpur", "nagaon", "guwahati", "darjeeling", "siliguri", "asansol", "durgapur",
+  "bardhaman", "howrah", "salt lake city", "new town",
+  "paris", "london", "tokyo", "berlin", "rome", "madrid", "sydney", "toronto",
+  "chicago", "boston", "seattle", "miami", "dallas", "houston", "denver",
 ];
 
 const CODING = [
@@ -147,6 +151,76 @@ const CODING = [
   "yaml", "yield", "zig",
 ];
 
+interface CityRow {
+  name: string;
+  country_code: string;
+}
+
+function normalizeAtlasWord(word: string): string {
+  return word.toLowerCase().trim().replace(/\s+/g, " ");
+}
+
+function normalizeCityName(name: string): string | null {
+  const ascii = name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z ]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (ascii.length < 3) return null;
+  if (!/^[a-z]+(?: [a-z]+)*$/.test(ascii)) return null;
+  return ascii;
+}
+
+function buildCitiesFromJson(): string[] {
+  console.log(`Reading ${CITIES_JSON_PATH} …`);
+  const raw = readFileSync(CITIES_JSON_PATH, "utf8");
+  const rows = JSON.parse(raw) as CityRow[];
+
+  const indian = new Set<string>();
+  const international = new Set<string>();
+
+  for (const row of rows) {
+    const normalized = normalizeCityName(row.name);
+    if (!normalized) continue;
+    if (row.country_code === "IN") {
+      indian.add(normalized);
+    } else {
+      international.add(normalized);
+    }
+  }
+
+  for (const name of CITY_SUPPLEMENT) {
+    const normalized = normalizeCityName(name);
+    if (normalized) indian.add(normalized);
+  }
+
+  const intlSorted = [...international].sort((a, b) => a.localeCompare(b));
+  const minCities = 4000;
+  const intlCap = Math.max(0, minCities - indian.size);
+  const intlPick = intlSorted.slice(0, intlCap);
+  const cities = [...indian, ...intlPick].sort((a, b) => a.localeCompare(b));
+
+  console.log(
+    `Cities: ${indian.size} India + ${intlPick.length} international = ${cities.length} total`,
+  );
+  return cities;
+}
+
+function writeCitiesTxt(cities: string[]): void {
+  writeFileSync(CITIES_TXT_PATH, `${cities.join("\n")}\n`, "utf8");
+  console.log(`Wrote ${CITIES_TXT_PATH} (${cities.length} cities)`);
+}
+
+function loadCitiesTxt(): string[] {
+  const raw = readFileSync(CITIES_TXT_PATH, "utf8");
+  return raw
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length >= 3);
+}
+
 function writeList(name: string, words: string[]): void {
   const unique = [...new Set(words.map((w) => w.toLowerCase().trim()))]
     .filter((w) => w.length >= 3 && /^[a-z]+$/.test(w))
@@ -156,6 +230,44 @@ function writeList(name: string, words: string[]): void {
   console.log(`Wrote ${path} (${unique.length} words)`);
 }
 
-writeList("pets.txt", PETS);
-writeList("atlas.txt", [...COUNTRIES, ...CITIES]);
-writeList("coding.txt", CODING);
+function writeAtlasList(countries: string[], cities: string[]): void {
+  const unique = [
+    ...new Set([...countries, ...cities].map(normalizeAtlasWord)),
+  ]
+    .filter((w) => w.length >= 3 && /^[a-z]+(?: [a-z]+)*$/.test(w))
+    .sort();
+  const path = resolve(outDir, "atlas.txt");
+  writeFileSync(path, `${unique.join("\n")}\n`, "utf8");
+  const countrySet = new Set(countries.map(normalizeAtlasWord));
+  const cityCount = unique.filter((w) => !countrySet.has(w)).length;
+  console.log(
+    `Wrote ${path} (${unique.length} entries: ${countries.length} countries + ${cityCount} cities)`,
+  );
+}
+
+function resolveCities(): string[] {
+  if (existsSync(CITIES_JSON_PATH)) {
+    const cities = buildCitiesFromJson();
+    writeCitiesTxt(cities);
+    return cities;
+  }
+  if (existsSync(CITIES_TXT_PATH)) {
+    console.log(
+      `Using ${CITIES_TXT_PATH} (place json-cities.json locally to regenerate from source)`,
+    );
+    return loadCitiesTxt();
+  }
+  throw new Error(
+    `Missing city data. Add ${CITIES_TXT_PATH} or download json-cities.json into server/src/wordlists/.`,
+  );
+}
+
+function main(): void {
+  writeList("pets.txt", PETS);
+  writeList("coding.txt", CODING);
+
+  const citiesFromTxt = resolveCities();
+  writeAtlasList(COUNTRIES.map(normalizeAtlasWord), citiesFromTxt);
+}
+
+main();

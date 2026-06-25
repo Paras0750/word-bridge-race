@@ -84,7 +84,10 @@ export function createRoom(id: RoomId, host: Player): Room {
   };
 }
 
-export function toPublicRoom(room: Room): PublicRoom {
+export function toPublicRoom(
+  room: Room,
+  extras?: { pickableLetters?: string[] },
+): PublicRoom {
   const round = room.round
     ? {
         index: room.round.index,
@@ -109,6 +112,7 @@ export function toPublicRoom(room: Room): PublicRoom {
         skipReason: room.round.skipReason,
         possibleWordCount: room.round.possibleWordCount,
         skipVoteIds: [...room.round.skipVotes],
+        pickableLetters: extras?.pickableLetters ?? [],
       }
     : null;
 
@@ -190,12 +194,6 @@ export function isNameTaken(room: Room, name: string, exceptPlayerId?: PlayerId)
   return room.players.some(
     (p) => p.id !== exceptPlayerId && p.name.trim().toLowerCase() === lower,
   );
-}
-
-export function pickRandomLetter(slot: "start" | "end" = "start"): string {
-  const letters = slot === "end" ? PICKABLE_END_LETTERS : PICKABLE_START_LETTERS;
-  const idx = Math.floor(Math.random() * letters.length);
-  return letters[idx] ?? "a";
 }
 
 export function selectPickers(room: Room): { start: Player; end: Player } {

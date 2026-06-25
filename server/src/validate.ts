@@ -1,9 +1,10 @@
-import { isValidWord } from "./wordlists";
+import { isValidWord, normalizeEntry } from "./wordlists";
 import type { WordListId } from "./types";
 
 export interface ValidationResult {
   valid: boolean;
   reason?: string;
+  normalized?: string;
 }
 
 export function validateWord(
@@ -13,9 +14,10 @@ export function validateWord(
   usedWords: Set<string>,
   listId: WordListId,
 ): ValidationResult {
-  const w = word.trim().toLowerCase();
+  const w = normalizeEntry(word, listId);
   if (w.length === 0) return { valid: false, reason: "empty" };
-  if (!/^[a-z]+$/.test(w)) return { valid: false, reason: "letters_only" };
+  const lettersPattern = listId === "atlas" ? /^[a-z]+(?: [a-z]+)*$/ : /^[a-z]+$/;
+  if (!lettersPattern.test(w)) return { valid: false, reason: "letters_only" };
 
   const s = start.trim().toLowerCase();
   const e = end.trim().toLowerCase();
@@ -32,5 +34,5 @@ export function validateWord(
   if (usedWords.has(w)) return { valid: false, reason: "already_used" };
   if (!isValidWord(w, listId)) return { valid: false, reason: "not_a_word" };
 
-  return { valid: true };
+  return { valid: true, normalized: w };
 }

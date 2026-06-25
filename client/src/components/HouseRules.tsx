@@ -3,7 +3,6 @@
 import {
   ClipboardXIcon,
   EyeIcon,
-  GlobeIcon,
   HandIcon,
   ScrollTextIcon,
   SmileIcon,
@@ -26,9 +25,6 @@ export function HouseRules({ wordListId }: Props) {
       icon: ZapIcon,
       text: `Type a valid ${modeLabel} word that bridges the two letters. First valid answer wins.`,
     },
-    ...(wordListId === "atlas" && WORD_LIST_META.atlas.detail
-      ? [{ icon: GlobeIcon, text: WORD_LIST_META.atlas.detail }]
-      : []),
     {
       icon: ClipboardXIcon,
       text: "Cmd+V is not a word.",

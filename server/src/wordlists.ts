@@ -17,6 +17,23 @@ const REGISTRY: Record<WordListId, { file: string; minLength: number }> = {
 const wordLists = new Map<WordListId, Set<string>>();
 const firstLastIndexes = new Map<WordListId, Map<string, number>>();
 
+export function normalizeEntry(word: string, listId: WordListId): string {
+  const trimmed = word.trim().toLowerCase();
+  if (listId === "atlas") {
+    return trimmed.replace(/\s+/g, " ");
+  }
+  return trimmed;
+}
+
+function isValidEntry(raw: string, listId: WordListId, minLength: number): boolean {
+  const w = normalizeEntry(raw, listId);
+  if (w.length < minLength) return false;
+  if (listId === "atlas") {
+    return /^[a-z]+(?: [a-z]+)*$/.test(w);
+  }
+  return /^[a-z]+$/.test(w);
+}
+
 function loadWordList(listId: WordListId): Set<string> {
   const cached = wordLists.get(listId);
   if (cached) return cached;
@@ -26,8 +43,8 @@ function loadWordList(listId: WordListId): Set<string> {
   const raw = readFileSync(path, "utf8");
   const set = new Set<string>();
   for (const line of raw.split("\n")) {
-    const w = line.trim().toLowerCase();
-    if (w.length >= minLength && /^[a-z]+$/.test(w)) set.add(w);
+    const w = normalizeEntry(line, listId);
+    if (isValidEntry(w, listId, minLength)) set.add(w);
   }
   wordLists.set(listId, set);
   return set;
@@ -56,7 +73,7 @@ function ensureIndex(listId: WordListId): Map<string, number> {
 }
 
 export function isValidWord(word: string, listId: WordListId): boolean {
-  return loadWordList(listId).has(word.trim().toLowerCase());
+  return loadWordList(listId).has(normalizeEntry(word, listId));
 }
 
 export function countMatching(
@@ -174,4 +191,66 @@ export function allWordListSizes(): Record<WordListId, number> {
     out[listId] = wordListSize(listId);
   }
   return out;
+}
+
+const PICKABLE_START_LETTERS = "abcdefghijklmnoprstuvwy".split("");
+const PICKABLE_END_LETTERS = "abcdefghiklmnoprstuvwy".split("");
+
+const validStartCache = new Map<WordListId, string[]>();
+const validEndCache = new Map<string, string[]>();
+
+export function validStartLetters(listId: WordListId): string[] {
+  const cached = validStartCache.get(listId);
+  if (cached) return cached;
+  const found = new Set<string>();
+  for (const w of loadWordList(listId)) {
+    const first = w[0];
+    if (first) found.add(first);
+  }
+  const letters = PICKABLE_START_LETTERS.filter((l) => found.has(l));
+  validStartCache.set(listId, letters);
+  return letters;
+}
+
+export function validEndLetters(start: string, listId: WordListId): string[] {
+  const s = start.trim().toLowerCase();
+  const cacheKey = `${listId}:${s}`;
+  const cached = validEndCache.get(cacheKey);
+  if (cached) return cached;
+  const found = new Set<string>();
+  for (const w of loadWordList(listId)) {
+    if (w.startsWith(s)) {
+      const last = w[w.length - 1];
+      if (last) found.add(last);
+    }
+  }
+  const letters = PICKABLE_END_LETTERS.filter((l) => found.has(l));
+  validEndCache.set(cacheKey, letters);
+  return letters;
+}
+
+export function pickRandomLetter(
+  slot: "start" | "end",
+  listId: WordListId,
+  start = "",
+): string {
+  const pool =
+    slot === "end" ? validEndLetters(start, listId) : validStartLetters(listId);
+  const fallback = slot === "end" ? PICKABLE_END_LETTERS : PICKABLE_START_LETTERS;
+  const letters = pool.length > 0 ? pool : fallback;
+  return letters[Math.floor(Math.random() * letters.length)] ?? "a";
+}
+
+export function isPickableLetter(
+  slot: "start" | "end",
+  letter: string,
+  listId: WordListId,
+  start = "",
+): boolean {
+  const normalized = letter.trim().toLowerCase();
+  const pool =
+    slot === "end"
+      ? validEndLetters(start, listId)
+      : validStartLetters(listId);
+  return pool.includes(normalized);
 }

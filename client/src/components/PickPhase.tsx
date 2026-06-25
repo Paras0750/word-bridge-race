@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Loader2Icon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,8 +26,13 @@ export function PickPhase({ room, meId }: Props) {
   const [submittingLetter, setSubmittingLetter] = useState<string | null>(null);
   const [error, setError] = useState<string>("");
   const submitting = submittingLetter !== null;
-  const letters =
+  const allLetters =
     slot === "end" ? PICKABLE_END_LETTERS : PICKABLE_START_LETTERS;
+  const enabledLetters = useMemo(() => {
+    const fromServer = room.round?.pickableLetters ?? [];
+    if (fromServer.length > 0) return new Set(fromServer);
+    return new Set(allLetters);
+  }, [room.round?.pickableLetters, allLetters]);
 
   const totalMs = room.settings.pickTimeoutSeconds * 1000;
   const [secondsLeft, setSecondsLeft] = useState<number>(room.settings.pickTimeoutSeconds);
@@ -45,7 +50,7 @@ export function PickPhase({ room, meId }: Props) {
   }, [picker?.deadlineMs, totalMs]);
 
   const pick = (letter: string): void => {
-    if (!isMyTurn || submitting) return;
+    if (!isMyTurn || submitting || !enabledLetters.has(letter)) return;
     setSubmittingLetter(letter);
     setError("");
     getSocket().emit("pick_letter", { roomId: room.id, slot, letter }, (res) => {
@@ -53,6 +58,10 @@ export function PickPhase({ room, meId }: Props) {
       if (!res.ok) setError(res.error);
     });
   };
+
+  const visibleLetters = allLetters.filter((l) =>
+    slot === "end" ? enabledLetters.has(l) : true,
+  );
 
   return (
     <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 mx-auto flex max-w-2xl flex-col gap-4 duration-300">
@@ -74,7 +83,12 @@ export function PickPhase({ room, meId }: Props) {
 
           {slot === "end" && isMyTurn && (
             <p className="text-muted-foreground mt-2 text-xs">
-              Start letter is hidden — pick blind.
+              Start letter is hidden — pick blind. Only letters with valid words are shown.
+            </p>
+          )}
+          {slot === "start" && isMyTurn && enabledLetters.size < allLetters.length && (
+            <p className="text-muted-foreground mt-2 text-xs">
+              Grayed-out letters have no matches in this word list.
             </p>
           )}
 
@@ -95,26 +109,30 @@ export function PickPhase({ room, meId }: Props) {
       <Card>
         <CardContent className="pt-5">
           <div className="grid grid-cols-6 gap-2 sm:grid-cols-8 md:grid-cols-12">
-            {letters.map((l) => (
-              <Button
-                key={l}
-                variant="outline"
-                disabled={!isMyTurn || submitting}
-                onClick={() => pick(l)}
-                className={cn(
-                  "h-11 w-full p-0 font-mono text-base uppercase",
-                  !isMyTurn && "opacity-50",
-                  submittingLetter === l &&
-                    "border-foreground/40 bg-foreground/10",
-                )}
-              >
-                {submittingLetter === l ? (
-                  <Loader2Icon className="size-4 animate-spin" />
-                ) : (
-                  l
-                )}
-              </Button>
-            ))}
+            {visibleLetters.map((l) => {
+              const isEnabled = enabledLetters.has(l);
+              return (
+                <Button
+                  key={l}
+                  variant="outline"
+                  disabled={!isMyTurn || submitting || !isEnabled}
+                  onClick={() => pick(l)}
+                  className={cn(
+                    "h-11 w-full p-0 font-mono text-base uppercase",
+                    !isMyTurn && "opacity-50",
+                    slot === "start" && !isEnabled && "opacity-25",
+                    submittingLetter === l &&
+                      "border-foreground/40 bg-foreground/10",
+                  )}
+                >
+                  {submittingLetter === l ? (
+                    <Loader2Icon className="size-4 animate-spin" />
+                  ) : (
+                    l
+                  )}
+                </Button>
+              );
+            })}
           </div>
           {!isMyTurn && (
             <p className="text-muted-foreground mt-4 text-center text-xs">

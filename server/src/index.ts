@@ -12,7 +12,6 @@ import {
   findPlayer,
   generateRoomId,
   isNameTaken,
-  pickRandomLetter,
   removePlayer,
   selectPickers,
   toPublicRoom,
@@ -25,8 +24,13 @@ import {
   allWordListSizes,
   countMatching,
   isAlmostMatch,
+  isPickableLetter,
   loadAllWordLists,
+  normalizeEntry,
+  pickRandomLetter,
   sampleMatching,
+  validEndLetters,
+  validStartLetters,
 } from "./wordlists";
 import { log, shortId } from "./logger";
 import type {
@@ -127,8 +131,22 @@ type IOSocket = Socket<
   SocketData
 >;
 
+function pickableLettersForRoom(room: Room): string[] {
+  if (!room.round) return [];
+  if (room.phase === "pick_start") {
+    return validStartLetters(room.settings.wordListId);
+  }
+  if (room.phase === "pick_end") {
+    return validEndLetters(room.round.start, room.settings.wordListId);
+  }
+  return [];
+}
+
 function broadcastRoom(room: Room): void {
-  io.to(room.id).emit("room_update", toPublicRoom(room));
+  io.to(room.id).emit(
+    "room_update",
+    toPublicRoom(room, { pickableLetters: pickableLettersForRoom(room) }),
+  );
 }
 
 function destroyRoom(room: Room): void {
@@ -274,7 +292,11 @@ function schedulePickTimeout(room: Room, slot: "start" | "end"): void {
   room.pickTimer = setTimeout(
     () => {
       if (!room.round) return;
-      const letter = pickRandomLetter(slot);
+      const letter = pickRandomLetter(
+        slot,
+        room.settings.wordListId,
+        slot === "end" ? (room.round?.start ?? "") : "",
+      );
       applyPick(room, slot, letter, true);
     },
     room.settings.pickTimeoutSeconds * 1000,
@@ -291,6 +313,16 @@ function applyPick(
   const normalized = letter.trim().toLowerCase();
   const pickableLetters = slot === "end" ? PICKABLE_END_LETTERS : PICKABLE_LETTERS;
   if (!pickableLetters.includes(normalized)) return;
+  if (
+    !isPickableLetter(
+      slot,
+      normalized,
+      room.settings.wordListId,
+      slot === "end" ? (room.round?.start ?? "") : "",
+    )
+  ) {
+    return;
+  }
 
   if (room.pickTimer) {
     clearTimeout(room.pickTimer);
@@ -706,7 +738,10 @@ io.on("connection", (socket: IOSocket) => {
 
     ack({
       ok: true,
-      data: { playerId: socket.data.playerId, room: toPublicRoom(room) },
+      data: {
+        playerId: socket.data.playerId,
+        room: toPublicRoom(room, { pickableLetters: pickableLettersForRoom(room) }),
+      },
     });
     broadcastRoom(room);
 
@@ -815,6 +850,19 @@ io.on("connection", (socket: IOSocket) => {
     const pickableLetters = slot === "end" ? PICKABLE_END_LETTERS : PICKABLE_LETTERS;
     if (!pickableLetters.includes(letter))
       return ack({ ok: false, error: "Pick a valid letter" });
+    if (
+      !isPickableLetter(
+        slot,
+        letter,
+        room.settings.wordListId,
+        slot === "end" ? room.round.start : "",
+      )
+    ) {
+      return ack({
+        ok: false,
+        error: "No words in this list for that letter",
+      });
+    }
 
     ack({ ok: true, data: null });
     applyPick(room, slot, letter, false);
@@ -832,7 +880,11 @@ io.on("connection", (socket: IOSocket) => {
     if (room.round.winner)
       return ack({ ok: false, error: "Round already won" });
 
-    const rawWord = (payload.word ?? "").trim().toLowerCase().slice(0, 30);
+    const maxLen = room.settings.wordListId === "atlas" ? 50 : 30;
+    const rawWord = normalizeEntry(
+      (payload.word ?? "").slice(0, maxLen),
+      room.settings.wordListId,
+    );
     const pasted = payload.pasted === true;
     const wasFlaggedBefore = room.round.cheaters.has(player.id);
 
@@ -924,6 +976,8 @@ io.on("connection", (socket: IOSocket) => {
       });
     }
 
+    const acceptedWord = result.normalized ?? rawWord;
+
     const tookMs = Date.now() - (room.round.startedAt ?? Date.now());
     player.streak += 1;
     const bonus = player.streak >= STREAK_BONUS_AT ? STREAK_BONUS_POINTS : 0;
@@ -938,20 +992,20 @@ io.on("connection", (socket: IOSocket) => {
     const winnerData = {
       playerId: player.id,
       name: player.name,
-      word: rawWord,
+      word: acceptedWord,
       tookMs,
       streak: player.streak,
       bonus,
     };
     room.round.winner = winnerData;
-    room.usedWords.add(rawWord);
+    room.usedWords.add(acceptedWord);
 
     log.info("round.winner", {
       roomId: room.id,
       roundIndex: room.round.index,
       playerId: shortId(player.id),
       name: player.name,
-      word: rawWord,
+      word: acceptedWord,
       tookMs,
       streak: player.streak,
       bonus,

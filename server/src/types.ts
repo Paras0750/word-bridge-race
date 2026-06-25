@@ -49,10 +49,8 @@ export const WORD_LIST_META: Record<
   },
   atlas: {
     label: "Atlas",
-    hint: "Countries & single-word cities",
+    hint: "Countries & cities",
     notFoundLabel: "Not a known country or city.",
-    detail:
-      "Atlas only includes single-word places (e.g. paris, tokyo). Multi-word names like “new york” are excluded by the game’s letter-only rule.",
   },
   coding: {
     label: "Coding",
@@ -161,6 +159,7 @@ export interface PublicRound {
   skipReason: "no_words" | "voted" | null;
   possibleWordCount: number;
   skipVoteIds: PlayerId[];
+  pickableLetters: string[];
 }
 
 export interface PublicRoom {

@@ -17,7 +17,6 @@ adoni
 adoor
 adra
 aduthurai
-afghanistan
 afzalgarh
 afzalpur
 agar
@@ -71,10 +70,8 @@ alangulam
 alappakkam
 alappuzha
 alawalpur
-albania
 aldona
 ale
-algeria
 alibag
 aliganj
 aligarh
@@ -147,11 +144,9 @@ andal
 andheri
 andippatti
 andol
-andorra
 andura
 anekal
 angamali
-angola
 angul
 angul district
 anjad
@@ -168,7 +163,6 @@ annur
 anshing
 anta
 anthiyur
-antigua and barbuda
 antri
 antu
 anupgarh
@@ -187,12 +181,10 @@ araul
 arcot
 ardhapur
 argaon
-argentina
 arimalam
 ariyalur
 arkalgud
 arki
-armenia
 arni
 aron
 aroor
@@ -238,8 +230,6 @@ aurangabad
 auras
 auroville
 ausa
-australia
-austria
 avadi
 avanigadda
 avanoor
@@ -249,7 +239,6 @@ ayakudi
 ayodhya
 ayyampettai
 azamgarh
-azerbaijan
 azhikkal
 azizpur
 babai
@@ -295,12 +284,10 @@ bagula
 bah
 bahadurganj
 bahadurgarh
-bahamas
 baheri
 bahjoi
 bahraich
 bahraigh
-bahrain
 bahsuma
 bahua
 bahula
@@ -376,7 +363,6 @@ banganapalle
 bangaon
 bangarapet
 bangarmau
-bangladesh
 banihal
 banjar
 banka
@@ -412,7 +398,6 @@ baranagar
 barasat
 barauli
 baraut
-barbados
 barbil
 bardhaman
 bardoli
@@ -492,13 +477,10 @@ bela
 belagavi
 belaguntha
 belapur
-belarus
 belda
 beldanga
 belgaum
-belgium
 beliatore
-belize
 bellampalli
 belluru
 belonia
@@ -512,7 +494,6 @@ bengaluru
 bengaluru rural
 bengaluru urban
 beniganj
-benin
 beohari
 berasia
 berhampore
@@ -622,7 +603,6 @@ bhugaon
 bhuj
 bhuma
 bhusaval
-bhutan
 biaora
 bidar
 bidhnu
@@ -688,7 +668,6 @@ bokajan
 bokakhat
 bokaro
 bolanikhodan
-bolivia
 bolpur
 bomdila
 bongaigaon
@@ -696,16 +675,12 @@ borgaon manju
 borivali
 borkhera
 borsad
-bosnia and herzegovina
 boston
 botad
-botswana
 brahmapur
 brahmapuri
 brajarajnagar
-brazil
 breach candy
-brunei
 budaun
 budge budge
 budhana
@@ -713,35 +688,26 @@ budhlada
 buguda
 bulandshahr
 buldana
-bulgaria
 bundi
 bundu
 burhanpur
 burhar
 buriya
-burkina faso
 burla
-burundi
 buxar
 byadgi
 byculla
 byndoor
-cabo verde
 cachar
 calangute
-cambodia
-cameroon
 canacona
-canada
 candolim
 canning
 captainganj
 carapur
 cavelossim
-central african republic
 central delhi
 chabua
-chad
 chaibasa
 chail
 chakan
@@ -858,11 +824,9 @@ chikmagalur
 chiknayakanhalli
 chikodi
 chilakalurupet
-chile
 chillupar
 chima
 chimur
-china
 chinchani
 chinchinim
 chincholi
@@ -909,20 +873,14 @@ coimbatore
 colaba
 colachel
 colgong
-colombia
 colonelganj
 colovale
 colva
-comoros
-congo
 contai
 cooch behar
 coondapoor
 cortalim
 cossimbazar
-costa rica
-croatia
-cuba
 cuddalore
 cuddapah
 cumbum
@@ -930,8 +888,6 @@ cuncolim
 curchorem
 curti
 cuttack
-cyprus
-czechia
 dabhoda
 dabhoi
 dabhol
@@ -1003,9 +959,7 @@ dehu
 delhi
 delvada
 delwada
-democratic republic of the congo
 denkanikota
-denmark
 denver
 deoband
 deogarh
@@ -1129,7 +1083,6 @@ dispur
 diu
 diveagar
 divrasai
-djibouti
 dod ballapur
 doda
 dohad
@@ -1137,8 +1090,6 @@ dohrighat
 doiwala
 domariaganj
 dombivli
-dominica
-dominican republic
 domjur
 dondaicha
 dongargaon
@@ -1173,11 +1124,8 @@ east jaintia hills
 east kameng
 east khasi hills
 east siang
-ecuador
 edakkulam
 egra
-egypt
-el salvador
 elamanchili
 elayirampannai
 ellenabad
@@ -1185,22 +1133,17 @@ ellore
 elumalai
 elur
 emmiganur
-equatorial guinea
 eral
 erandol
 eraniel
 erattupetta
-eritrea
 ernakulam
 erode
 erraguntla
 erumaippatti
-estonia
-eswatini
 etah
 etawa
 etawah
-ethiopia
 etikoppaka
 etmadpur
 ettaiyapuram
@@ -1227,8 +1170,6 @@ fatehpur sikri
 fatwa
 fazilka
 ferokh
-fiji
-finland
 firozabad
 firozpur
 firozpur district
@@ -1236,10 +1177,8 @@ firozpur jhirka
 forbesganj
 fort
 fort gloster
-france
 french rocks
 fyzabad
-gabon
 gadag
 gadag betageri
 gadarwara
@@ -1259,7 +1198,6 @@ gajendragarh
 gajraula
 gajuwaka
 galiakot
-gambia
 gandai
 ganderbal
 gandevi
@@ -1304,10 +1242,7 @@ gautam buddha nagar
 gautampura
 gawan
 gaya
-georgia
-germany
 gevrai
-ghana
 ghanaur
 ghansor
 gharaunda
@@ -1387,10 +1322,7 @@ govardhan
 govindapuramchilakaluripetguntur
 govindgarh
 greater noida
-greece
-grenada
 gua
-guatemala
 gubbi
 gudalur
 gudari
@@ -1401,8 +1333,6 @@ gudlavalleru
 gudur
 guduvancheri
 guhagar
-guinea
-guinea bissau
 guirim
 gulabpura
 gulaothi
@@ -1428,7 +1358,6 @@ gurugram
 guruvayur
 guskhara
 guwahati
-guyana
 gwalior
 gyalshing
 gyanpur
@@ -1438,7 +1367,6 @@ hadapsar pune
 hadgaon
 haflong
 hailakandi
-haiti
 hajan
 hajipur
 hajo
@@ -1523,7 +1451,6 @@ holalkere
 hole narsipur
 homnabad
 honavar
-honduras
 honnali
 hooghly
 hosanagara
@@ -1542,14 +1469,12 @@ hubballi
 hubli
 hukeri
 hulas
-hungary
 hungund
 hunsur
 husainabad
 hyderabad
 iawar
 ibrahimpur
-iceland
 ichalkaranji
 ichapur
 ichchapuram
@@ -1571,17 +1496,12 @@ inda chhoi
 indapur
 indergarh
 indi
-india
-indonesia
 indore
 indpur community development block
 indragarh
 indri
 ingraj bazar
 injambakkam
-iran
-iraq
-ireland
 iringal
 irinjalakuda
 irugur
@@ -1590,13 +1510,10 @@ ishanpur
 islamnagar
 islamnagar badaun
 islampur
-israel
-italy
 itanagar
 itarsi
 itaunja
 itimadpur
-ivory coast
 jabalpur
 jafarpur
 jagadhri
@@ -1650,7 +1567,6 @@ jalore
 jalpaiguri
 jamadoba
 jamai
-jamaica
 jamalpur
 jambuda
 jambusar
@@ -1675,7 +1591,6 @@ janjgir champa
 jansath
 jaoli
 jaora
-japan
 jarod
 jarwa
 jarwal
@@ -1744,7 +1659,6 @@ jogeshwari
 jogighopa
 jogindarnagar
 jogulamba gadwal
-jordan
 jorethang
 jorhat
 joshimath
@@ -1970,7 +1884,6 @@ kayalpattinam
 kayankulam
 kayattar
 kayavarohan
-kazakhstan
 keelakarai
 kekri
 kelamangalam
@@ -1979,7 +1892,6 @@ kenda
 kendrapara
 kenduadih
 kendujhar
-kenya
 kerur
 kerwada
 keshabpur
@@ -2080,7 +1992,6 @@ kiranur
 kiraoli
 kiratpur
 kiri buru
-kiribati
 kirnahar
 kishanganj
 kishangarh
@@ -2145,7 +2056,6 @@ korwai
 kosamba
 kosi
 kosigi
-kosovo
 kot isa khan
 kota
 kotagiri
@@ -2248,11 +2158,9 @@ kutiatodu
 kutiyana
 kuttalam
 kuttampuzha
-kuwait
 kuzhithurai
 kyathampalle
 kyelang
-kyrgyzstan
 lachhmangarh sikar
 ladnun
 ladol
@@ -2287,29 +2195,21 @@ lambhua
 langhnaj
 lanja
 lansdowne
-laos
 lar
 lasalgaon
 latehar
 lathi
 latur
-latvia
 laungowal
 lavasa
 lawar
 lawar khas
 lawngtlai
-lebanon
 leh
-lesotho
 leteri
-liberia
-libya
-liechtenstein
 limbdi
 limkheda
 lingsugur
-lithuania
 lodhikheda
 lohaghat
 lohardaga
@@ -2333,14 +2233,12 @@ ludhiana
 lumding railway colony
 lunavada
 lunglei
-luxembourg
 machalpur
 macherla
 machhali shahar
 machhiwara
 machhlishahr
 machilipatnam
-madagascar
 madambakkam
 madanapalle
 madanpur
@@ -2423,13 +2321,9 @@ malappuram
 malasa
 malaut
 malavalli
-malawi
-malaysia
-maldives
 malegaon
 malerkotla
 malhargarh
-mali
 malihabad
 malkajgiri
 malkangiri
@@ -2441,7 +2335,6 @@ mallur
 malpe
 malpur
 malpura
-malta
 malur
 malvan
 mamit
@@ -2526,7 +2419,6 @@ marhaura
 mariahu
 mariani
 markapur
-marshall islands
 masaurhi buzurg
 masila
 masinigudi
@@ -2548,8 +2440,6 @@ maudaha
 mauganj
 maur mandi
 maurawan
-mauritania
-mauritius
 mavelikara
 mavoor
 mawana
@@ -2580,11 +2470,9 @@ mendarda
 merta
 mettuppalaiyam
 mettur
-mexico
 mhasla
 mhasvad
 miami
-micronesia
 mihona
 milak
 milkipur
@@ -2612,13 +2500,9 @@ mohpa
 mokameh
 mokhada taluka
 mokokchung
-moldova
 mon
-monaco
 monghyr
-mongolia
 monoharpur
-montenegro
 mora maharashtra
 moradabad
 moram
@@ -2630,7 +2514,6 @@ morigaon
 morinda
 morjim
 mormugao
-morocco
 morsi
 morva hadaf
 morwa
@@ -2638,7 +2521,6 @@ moth
 mothihari
 mount abu
 mowad
-mozambique
 mubarakpur
 mudbidri
 muddebihal
@@ -2702,7 +2584,6 @@ muvattupula
 muvattupuzha
 muzaffarnagar
 muzaffarpur
-myanmar
 mysuru
 nabadwip
 nabagram
@@ -2769,7 +2650,6 @@ namakkal
 nambiyur
 nambutalai
 namchi
-namibia
 namkhana community development block
 namli
 nampur
@@ -2843,7 +2723,6 @@ nattarasankottai
 naugachhia
 naugama
 naurangpur
-nauru
 nautanwa
 navalgund
 navapur
@@ -2872,25 +2751,19 @@ negapatam
 nelamangala
 nellikkuppam
 nellore
-nepal
 nepanagar
 neral
 nerul
 nerur
-netherlands
 neturhat
 nevasa
 new delhi
 new town
-new zealand
 newara
 neyyattinkara
-nicaragua
 nichlaul
 nicobar
 nidadavole
-niger
-nigeria
 nighoj
 nigoh
 nihtaur
@@ -2928,14 +2801,11 @@ north east delhi
 north garo hills
 north goa
 north guwahati
-north korea
 north lakhimpur
-north macedonia
 north parganas
 north tripura
 north vanlaiphai
 north west delhi
-norway
 nowrangapur
 nuapada
 nuh
@@ -2953,7 +2823,6 @@ okha
 old delhi
 olpad
 omalur
-oman
 ongole
 ooty
 orai
@@ -2979,7 +2848,6 @@ paigaon
 paikpara
 paithan
 pakala
-pakistan
 pakur
 palackattumala
 palakkad
@@ -2993,10 +2861,8 @@ palanpur
 palanswa
 palasa
 palasbari
-palau
 palavakkam
 palera
-palestine
 palghar
 palghat
 pali
@@ -3023,7 +2889,6 @@ palwancha
 panagar
 panagarh
 panaji
-panama
 panamaram
 panara
 panch mahals
@@ -3054,9 +2919,7 @@ papanasam
 papireddippatti
 papparappatti
 pappinissheri
-papua new guinea
 paradip garh
-paraguay
 paramagudi
 paras rampur
 parasia
@@ -3151,7 +3014,6 @@ periyanegamam
 periyapatti
 periyapattinam
 pernem
-peru
 perumbavoor
 perumpavur
 perundurai
@@ -3170,7 +3032,6 @@ phariha
 phek
 pheona
 pherzawl
-philippines
 phillaur
 phirangipuram
 phulambri
@@ -3211,7 +3072,6 @@ pithapuram
 pithora
 pithoragarh
 pokaran
-poland
 polasara
 polavaram
 pollachi
@@ -3228,7 +3088,6 @@ poonamalle
 porbandar
 porsa
 port blair
-portugal
 porur
 powai
 prabhadevi
@@ -3282,7 +3141,6 @@ puttaparthi
 puttur
 qadian
 qadirganj
-qatar
 qazigund
 quepem
 queula
@@ -3422,7 +3280,6 @@ renukut
 reoti
 reotipur
 repalle
-republic of the congo
 revadanda
 revdanda
 revelganj
@@ -3442,7 +3299,6 @@ rohini
 rohru
 rohtak
 rohtas
-romania
 rome
 ron
 roorkee
@@ -3452,8 +3308,6 @@ rudraprayag
 rupnagar
 rura
 rusera
-russia
-rwanda
 sabalgarh
 sabalpur
 sabar kantha
@@ -3483,10 +3337,7 @@ saidpur
 saiha
 sailana
 sailu
-saint kitts and nevis
-saint lucia
 saint thomas mount
-saint vincent and the grenadines
 sainthia
 sairang
 saitlaw
@@ -3516,11 +3367,9 @@ sambalpur
 sambhal
 sambhar
 samdari
-samoa
 samrala
 samthar
 samudrapur
-san marino
 sanand
 sanaur
 sanawad
@@ -3555,7 +3404,6 @@ santoshpur
 santuri community development block
 sanvordem
 sanwer
-sao tome and principe
 saoli
 saoner
 sapatgram
@@ -3599,7 +3447,6 @@ satrikh
 sattenapalle
 sattur
 satwas
-saudi arabia
 saugor
 saundatti
 saurikh
@@ -3621,7 +3468,6 @@ sehore
 selu
 senapati
 sendhwa
-senegal
 seohara
 seondha
 seoni
@@ -3629,7 +3475,6 @@ seoni malwa
 seorinarayan
 seram
 serampore
-serbia
 serchhip
 serilingampalle
 serpur
@@ -3637,7 +3482,6 @@ serula
 sevagram
 seven pagodas
 sewri
-seychelles
 shadipur julana
 shahabad
 shahada
@@ -3711,7 +3555,6 @@ sidhauli
 sidhi
 sidhpura
 sidlaghatta
-sierra leone
 sihor
 sihora
 sijua
@@ -3738,7 +3581,6 @@ sindhudurg
 sindi
 sindkheda
 singanallur
-singapore
 singapperumalkovil
 singapur
 singarayakonda
@@ -3778,8 +3620,6 @@ sivakasi
 sivala east godavari
 siwan
 siwana
-slovakia
-slovenia
 soalkuchi
 sodpur
 sohagi
@@ -3791,8 +3631,6 @@ solan
 solap
 solapur
 solim
-solomon islands
-somalia
 someshwar
 sompeta
 somvarpet
@@ -3817,24 +3655,19 @@ sorbhog
 soro
 soron
 south
-south africa
 south andaman
 south delhi
 south garo hills
 south goa
-south korea
 south parganas
-south sudan
 south tripura
 south west delhi
 south west garo hills
 south west khasi hills
 soygaon
 soyibug
-spain
 sravana belgola
 sri dungargarh
-sri lanka
 sri madhopur
 sri muktsar sahib
 srikakulam
@@ -3853,7 +3686,6 @@ srivilliputhur
 suar
 subarnapur
 suchindram
-sudan
 sujangarh
 suket
 sultanpur
@@ -3879,20 +3711,14 @@ surguja
 suri
 surianwan
 suriapet
-suriname
 susner
 sutrapada
 swamimalai
 swarupnagar community development block
-sweden
-switzerland
 sydney
-syria
 tadepalle
 tadepallegudem
 tadpatri
-taiwan
-tajikistan
 tajpur
 takdah
 takhatgarh
@@ -3924,7 +3750,6 @@ tandur
 tanjore
 tankara
 tanuku
-tanzania
 taoru
 tapi
 tarabha
@@ -3954,7 +3779,6 @@ terdal
 terha
 tezpur
 tezu
-thailand
 thakurdwara
 thakurganj
 thalassery
@@ -3995,7 +3819,6 @@ tikamgarh
 tikri
 tilhar
 tilsahri
-timor leste
 tindivanam
 tindwari
 tinnanur
@@ -4031,11 +3854,9 @@ titlagarh
 titron
 todabhim
 todaraisingh
-togo
 tohana
 tokyo
 tondi
-tonga
 tonk
 topchanchi
 tori fatehpur
@@ -4043,7 +3864,6 @@ toronto
 tosham
 tral
 trimbak
-trinidad and tobago
 trombay
 tsrar sharif
 tuensang
@@ -4056,13 +3876,9 @@ tumakuru
 tumsar
 tundla
 tuni
-tunisia
 tura
 turaiyur
-turkey
-turkmenistan
 turuvekere
-tuvalu
 uchalan
 udaipur
 udaipura
@@ -4075,13 +3891,11 @@ udhampur
 udpura
 udumalaippettai
 udupi
-uganda
 ugu
 ujhani
 ujjain
 ukhrul
 uklana
-ukraine
 ukwa
 ula
 ulhasnagar
@@ -4100,9 +3914,6 @@ una
 unakoti
 unhel
 uniara
-united arab emirates
-united kingdom
-united states
 unjha
 unnao
 upleta
@@ -4113,7 +3924,6 @@ uppiliyapuram
 uran
 uravakonda
 uri
-uruguay
 uruli kanchan
 usawan
 usehat
@@ -4129,7 +3939,6 @@ uttarkashi
 uttarpara kotrung
 uttiramerur
 uttukkuli
-uzbekistan
 v s k valasai dindigul dist
 vada
 vadakku valliyur
@@ -4167,7 +3976,6 @@ vangaon
 vaniyambadi
 vansda
 vanthli
-vanuatu
 vapi
 varanasi
 varangaon
@@ -4183,7 +3991,6 @@ vaso
 vasudevanallur
 vatakara
 vataman
-vatican city
 vattalkundu
 vatul
 vayalar
@@ -4197,7 +4004,6 @@ vellore
 velneshwar
 velur
 vemalwada
-venezuela
 vengavasal
 vengurla
 venkatagiri
@@ -4208,7 +4014,6 @@ vettaikkaranpudur
 vettavalam
 vettur
 vidisha
-vietnam
 vijapur
 vijayapura
 vijayapuri
@@ -4295,7 +4100,6 @@ yelandur
 yelbarga
 yellandu
 yellapur
-yemen
 yeola
 yol
 yusufpur
@@ -4303,8 +4107,6 @@ zafarabad
 zahirabad
 zaidpur
 zamania
-zambia
-zimbabwe
 zira
 ziro
 zunheboto

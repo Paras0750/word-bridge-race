@@ -41,6 +41,7 @@ export function ActiveRound({ room, meId, attempts }: Props) {
 
   const start = room.round?.start ?? "";
   const end = room.round?.end ?? "";
+  const allowsSpaces = room.settings.wordListId === "atlas";
   const startedAt = room.round?.startedAt ?? null;
   const endsAt = room.round?.endsAt ?? null;
   const totalMs = startedAt && endsAt ? endsAt - startedAt : 0;
@@ -299,7 +300,12 @@ export function ActiveRound({ room, meId, attempts }: Props) {
                     pastedRef.current = true;
                   }
                   setWord(
-                    e.target.value.replace(/[^a-zA-Z]/g, "").toLowerCase(),
+                    allowsSpaces
+                      ? e.target.value
+                          .replace(/[^a-zA-Z ]/g, "")
+                          .toLowerCase()
+                          .replace(/\s+/g, " ")
+                      : e.target.value.replace(/[^a-zA-Z]/g, "").toLowerCase(),
                   );
                 }}
                 onPaste={() => {
@@ -310,7 +316,7 @@ export function ActiveRound({ room, meId, attempts }: Props) {
                 }}
                 placeholder={`${start}...${end}`}
                 autoFocus
-                maxLength={40}
+                maxLength={allowsSpaces ? 50 : 40}
                 inputMode="text"
                 autoCapitalize="none"
                 autoCorrect="off"
@@ -486,7 +492,7 @@ function humanizeReason(reason?: string, wordListId: WordListId = "dictionary"):
     case "wrong_end":
       return "Doesn't end with the right letter.";
     case "letters_only":
-      return "Letters only.";
+      return wordListId === "atlas" ? "Letters and spaces only." : "Letters only.";
     case "too_short":
       return "Too short to bridge both.";
     case "empty":

@@ -9,3 +9,6 @@ npm-debug.log
 yarn-error.log
 .bun
 .claude
+
+# Source city dataset (~190MB) — use cities.txt in repo instead
+server/src/wordlists/json-cities.json
