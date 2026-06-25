@@ -7,6 +7,7 @@
  * server/src/wordlists/ then run this script.
  *
  * Run: bun run scripts/build-wordlists.ts
+ * 
  */
 
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
